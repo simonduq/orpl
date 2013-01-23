@@ -36,39 +36,41 @@
 
 static int counter = 0;
 
-#define PRINT_STACK_ON_REBOOT 0
+#define PRINT_STACK_ON_REBOOT 1
 
 /*---------------------------------------------------------------------------*/
 #if PRINT_STACK_ON_REBOOT
 #ifdef CONTIKI_TARGET_SKY
-static void
-printchar(char c)
-{
-  /* Transmit the data. */
-  TXBUF1 = c;
-
-  /* Loop until the transmission buffer is available. */
-  while((IFG2 & UTXIFG1) == 0);
-
-}
+//static void
+//printchar(char c)
+//{
+//  /* Transmit the data. */
+//  TXBUF1 = c;
+//
+//  /* Loop until the transmission buffer is available. */
+//  while((IFG2 & UTXIFG1) == 0);
+//
+//}
+#define printchar putchar
 /*---------------------------------------------------------------------------*/
 static void
 hexprint(uint8_t v)
 {
   const char hexconv[] = "0123456789abcdef";
-  printchar(hexconv[v >> 4]);
-  printchar(hexconv[v & 0x0f]);
+  putchar(hexconv[v >> 4]);
+  putchar(hexconv[v & 0x0f]);
 }
 /*---------------------------------------------------------------------------*/
 static void
 printstring(char *s)
 {
   while(*s) {
-    printchar(*s++);
+	  putchar(*s++);
   }
 }
 #endif /* CONTIKI_TARGET_SKY */
 #endif /* PRINT_STACK_ON_REBOOT */
+
 /*---------------------------------------------------------------------------*/
 ISR(WDT, watchdog_interrupt)
 {
@@ -96,7 +98,7 @@ ISR(WDT, watchdog_interrupt)
 #endif /* PRINT_STACK_ON_REBOOT */
 #endif /* CONTIKI_TARGET_SKY */
 
-  watchdog_reboot();
+//  watchdog_reboot();
 }
 /*---------------------------------------------------------------------------*/
 void
