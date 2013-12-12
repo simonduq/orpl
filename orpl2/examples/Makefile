@@ -1,6 +1,5 @@
-CONTIKI=../contiki
-CONTIKI_TOOLS=$(CONTIKI)/tools
-CONTIKI_PROJECT = app-collect-only app-down-only app-down-only-full app-any-to-any
+CONTIKI=../../contiki
+CONTIKI_PROJECT = app-collect-only app-down-only
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 TARGET=sky
 
@@ -32,12 +31,9 @@ ACK_WITH_ADDR ?= 1
 CFLAGS += -DCMD_ACK_WITH_ADDR=$(ACK_WITH_ADDR)
 
 .PHONY: curr_contiki_head
-all: $(CONTIKI_PROJECT) curr_contiki_head
+all: $(CONTIKI_PROJECT)
 
 include Makefile.include
-
-curr_contiki_head:
-	git --git-dir=$(CONTIKI)/.git log -1 | head -n 1 > curr_contiki_head
 
 %.exe: %.sky
 	cp $< $@
