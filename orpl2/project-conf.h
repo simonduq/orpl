@@ -32,7 +32,67 @@
 #ifndef __PROJECT_CONF_H__
 #define __PROJECT_CONF_H__
 
-#include "common-conf.h"
+/* RPL and neighborhood information */
+
+#undef RPL_CONF_STATS
+#define RPL_CONF_STATS 0
+
+#define UIP_CONF_DS6_ADDR_NBU 1
+
+//#define RPL_CONF_DIO_INTERVAL_MIN 12  /* default 12 */
+//#define RPL_CONF_DIO_INTERVAL_DOUBLINGS 8 /* default 8 */
+#define RPL_CONF_DIO_INTERVAL_MIN 12  /* default 12 */
+#define RPL_CONF_DIO_INTERVAL_DOUBLINGS 8 /* default 8 */
+#define RPL_CONF_DIO_REDUNDANCY   200  /* default 10 */
+
+#define RPL_CONF_MAX_INSTANCES    1 /* default 1 */
+#define RPL_CONF_MAX_DAG_PER_INSTANCE 1 /* default 2 */
+
+/* Other system parameters */
+
+#undef UIP_CONF_BUFFER_SIZE
+#define UIP_CONF_BUFFER_SIZE    160
+
+#undef UIP_CONF_UDP_CONNS
+#define UIP_CONF_UDP_CONNS       2
+
+#undef UIP_CONF_FWCACHE_SIZE
+#define UIP_CONF_FWCACHE_SIZE    4
+
+#undef UIP_CONF_TCP
+#define UIP_CONF_TCP                    0
+
+#undef UIP_CONF_UDP_CHECKSUMS
+#define UIP_CONF_UDP_CHECKSUMS   0
+
+#undef SICSLOWPAN_CONF_FRAG
+#define SICSLOWPAN_CONF_FRAG 0
+
+#undef DCOSYNCH_CONF_ENABLED
+#define DCOSYNCH_CONF_ENABLED 0
+
+#undef RF_CHANNEL
+#define RF_CHANNEL              15
+
+//#define CC2420_TXPOWER_MAX  31
+//#define CC2420_TXPOWER_MIN   0
+#define RF_POWER                31
+//#define RF_POWER                7
+
+/* 32-bit rtimer */
+#define RTIMER_CONF_SECOND (4096UL*8)
+typedef uint32_t rtimer_clock_t;
+#define RTIMER_CLOCK_LT(a,b)     ((int32_t)(((rtimer_clock_t)a)-((rtimer_clock_t)b)) < 0)
+
+#define CONTIKIMAC_CONF_CYCLE_TIME (CMD_CYCLE_TIME * RTIMER_ARCH_SECOND / 1000)
+
+
+#undef CSMA_CONF_MAX_NEIGHBOR_QUEUES
+#define CSMA_CONF_MAX_NEIGHBOR_QUEUES 4
+
+#undef QUEUEBUF_CONF_NUM
+#define QUEUEBUF_CONF_NUM 4
+
 
 #define UP_ONLY 1
 #define ALL_NODES_ADDRESSABLE 1

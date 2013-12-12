@@ -96,7 +96,6 @@ CONTIKI_SOURCEFILES += $(CONTIKIFILES)
 
 CONTIKIDIRS_REL = dev lib net net/mac net/rime net/rpl sys cfs ctk lib/ctk loader tools .
 CONTIKIDIRS += ${addprefix $(CONTIKI)/core/, $(CONTIKIDIRS_REL) }
-COMMONDIRS += ${addprefix ../common/, $(CONTIKIDIRS_REL) }
 
 oname = ${patsubst %.c,%.o,${patsubst %.S,%.o,$(1)}}
 
@@ -149,7 +148,7 @@ CONTIKI_TARGET_DIRS_CONCAT = ${addprefix ${dir $(target_makefile)}, \
 CONTIKI_CPU_DIRS_CONCAT    = ${addprefix $(CONTIKI_CPU)/, \
                                $(CONTIKI_CPU_DIRS)}
 
-SOURCEDIRS = $(CONTIKIDIRS_REL) $(COMMONDIRS) $(PROJECTDIRS) $(CONTIKI_TARGET_DIRS_CONCAT) \
+SOURCEDIRS = $(CONTIKIDIRS_REL) $(PROJECTDIRS) $(CONTIKI_TARGET_DIRS_CONCAT) \
              $(CONTIKI_CPU_DIRS_CONCAT) $(CONTIKIDIRS) $(APPDIRS) ${dir $(target_makefile)}
 
 vpath %.c $(SOURCEDIRS)
