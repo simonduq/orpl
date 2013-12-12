@@ -34,7 +34,7 @@
 
 #include "common-conf.h"
 
-#define UP_ONLY 0
+#define UP_ONLY 1
 #define ALL_NODES_ADDRESSABLE 1
 
 /* For tests. When set:
