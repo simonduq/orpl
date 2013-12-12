@@ -1,4 +1,4 @@
-CONTIKI=../contiki
+CONTIKI=/home/user/contiki-2.7
 CONTIKI_TOOLS=$(CONTIKI)/tools
 CONTIKI_PROJECT = app-collect-only app-down-only app-down-only-full app-any-to-any
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
