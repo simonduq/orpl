@@ -127,8 +127,6 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 
   if(node_id == ROOT_ID) {
     NETSTACK_RDC.off(1);
-    //  etimer_set(&periodic_timer, 90 * CLOCK_SECOND);
-    //  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
     printf("App: %u starting\n", node_id);
     etimer_set(&periodic_timer, SEND_INTERVAL);
     while(1) {
@@ -144,7 +142,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
         app_send_to(id);
       }
 
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
+      PROCESS_WAIT_UNTIL(etimer_expired(&periodic_timer));
       etimer_reset(&periodic_timer);
     }
   }
