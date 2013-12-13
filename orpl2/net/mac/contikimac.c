@@ -901,20 +901,19 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
 
   if(!is_broadcast) {
 	  if(got_strobe_ack) {
+		  rpl_trace_from_packetbuf("Cmac: acked by %u s %u c %d seq %u",
+				  				  node_id_from_rimeaddr(dest),
+				  				  strobe_duration,
+				  				  collision_count, seqno);
+		  //TODO: don't use dataptr (r seqno)
 		  struct app_data *dataptr = rpl_dataptr_from_packetbuf();
-		  printf("Cmac: acked by %u s %u c %d seq %u",
-				  node_id_from_rimeaddr(dest),
-				  strobe_duration,
-				  collision_count, seqno);
-		  rpl_trace(dataptr);
 		  if(dataptr && !packetbuf_attr(PACKETBUF_ATTR_GOING_UP)) {
 			  struct app_data data;
 			  app_data_init(&data, dataptr);
 			  acked_down_insert(data.seqno, node_id_from_rimeaddr(dest));
 		  }
 	  } else {
-		  printf("Cmac:! noack s %u c %d seq %u", strobe_duration, collisions, seqno);
-		  rpl_trace(rpl_dataptr_from_packetbuf());
+		  rpl_trace_from_packetbuf("Cmac:! noack s %u c %d seq %u", strobe_duration, collisions, seqno);
 	  }
   }
 
@@ -1060,6 +1059,7 @@ input_packet(void)
 
       struct app_data *dataptr = NULL;
       if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
+        //TODO: don't use dataptr (r seqno, rw hop)
         dataptr = rpl_dataptr_from_packetbuf();
       }
       struct app_data data;
@@ -1111,8 +1111,7 @@ input_packet(void)
 
         dataptr->hop += 1;
         if(dataptr->hop > 128) {
-          printf("Cmac: dropping from %d after too many hops", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
-          rpl_trace(dataptr);
+          rpl_trace_from_packetbuf("Cmac: dropping from %d after too many hops", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
           return;
         }
 
@@ -1125,8 +1124,7 @@ input_packet(void)
                * are not dropped as app-layer duplicates */
               if(seqno == received_app_seqnos[i].seqno) {
                 /* Drop the packet. */
-                printf("Cmac:! dropping app-layer duplicate from %d", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
-                rpl_trace(dataptr);
+            	rpl_trace_from_packetbuf("Cmac:! dropping app-layer duplicate from %d", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
                 return;
               }
             }
@@ -1137,10 +1135,9 @@ input_packet(void)
           received_app_seqnos[0].seqno = seqno;
         }
 
-        printf("Cmac: input from %d",
+        rpl_trace_from_packetbuf("Cmac: input from %d",
             node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER))
         );
-        rpl_trace(dataptr);
       }
 
       NETSTACK_MAC.input();

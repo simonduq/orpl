@@ -26,7 +26,7 @@ void app_data_init(struct app_data *dst, struct app_data *src) {
 }
 
 /*---------------------------------------------------------------------------*/
-void rpl_trace(struct app_data *dataptr) {
+void rpl_log(struct app_data *dataptr) {
 
   struct app_data data;
 

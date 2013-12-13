@@ -185,8 +185,6 @@ check_for_tcp_syn(void)
 static void
 packet_input(void)
 {
-//  printf("Tcpip: packet_input");
-//  rpl_trace(rpl_dataptr_from_packetbuf());
 #if UIP_CONF_IP_FORWARD
   if(uip_len > 0) {
     tcpip_is_forwarding = 1;
@@ -211,16 +209,12 @@ packet_input(void)
   }
 #else /* UIP_CONF_IP_FORWARD */
   if(uip_len > 0) {
-//    printf("Tcpip: packet_input 2");
-//    rpl_trace(rpl_dataptr_from_packetbuf());
     if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
       anycast_packet_received();
     }
     check_for_tcp_syn();
     uip_input();
     if(uip_len > 0) {
-//      printf("Tcpip: packet_input 3");
-//            rpl_trace(rpl_dataptr_from_packetbuf());
 #if UIP_CONF_TCP_SPLIT
       uip_split_output();
 #else /* UIP_CONF_TCP_SPLIT */
@@ -539,8 +533,6 @@ eventhandler(process_event_t ev, process_data_t data)
 void
 tcpip_input(void)
 {
-//  printf("Tcpip: input");
-//      rpl_trace(rpl_dataptr_from_packetbuf());
   process_post_synch(&tcpip_process, PACKET_INPUT, NULL);
   uip_len = 0;
 #if UIP_CONF_IPV6
@@ -605,20 +597,18 @@ tcpip_ipv6_output(void)
 //      }
 
       /* Set anycast MAC address instead of routing */
+      //TODO: don't use dataptr (r seqno)
       struct app_data *dataptr = rpl_dataptr_from_uip();
       struct app_data data;
       app_data_init(&data, dataptr);
       if(is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
-        printf("Tcpip: fw to nbr");
-        rpl_trace(dataptr);
+        rpl_trace_from_uip("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;
       } else if(is_in_subdodag(&UIP_IP_BUF->destipaddr) && !blacklist_contains(data.seqno)) {
-        printf("Tcpip: fw down");
-        rpl_trace(dataptr);
+        rpl_trace_from_uip("Tcpip: fw down");
         anycast_addr = &anycast_addr_down;
       } else {
-        printf("Tcpip: fw up");
-        rpl_trace(dataptr);
+        rpl_trace_from_uip("Tcpip: fw up");
         anycast_addr = &anycast_addr_up;
       }
 #if TCPIP_CONF_ANNOTATE_TRANSMISSIONS

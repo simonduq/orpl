@@ -279,24 +279,20 @@ packet_sent(void *ptr, int status, int num_transmissions)
                  transmit_packet_list, n);
       /* This is needed to correctly attribute energy that we spent
          transmitting this packet. */
-//      printf("Csma:! rtx after %d tx, %d collisions, backoff: %lu", n->transmissions, n->collisions, time);
-//      rpl_trace(rpl_dataptr_from_packetbuf());
       queuebuf_update_attr_from_packetbuf(q->buf);
     } else {
 #if (BLOOM_FP_RECOVERY == 1)
       if(!is_edc_root && packetbuf_attr(PACKETBUF_ATTR_GOING_UP) == 0) { /* Failed downwards transmission. Trigger false positive recovery. */
+        //TODO: don't use dataptr (r seqno, rw fpcount)
         struct app_data *dataptr = rpl_dataptr_from_packetbuf();
         struct app_data data;
         app_data_init(&data, dataptr);
-        printf("Csma:! triggering false positive recovery %u after %d tx, %d c.", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
-        rpl_trace(dataptr);
+        rpl_trace_from_packetbuf("Csma:! triggering false positive recovery %u after %d tx, %d c.", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
         free_first_packet(n);
         /* GIve another try, upwards this time, after inserting in blacklist. */
         blacklist_insert(data.seqno);
-//        blacklist_insert_dst(data->dst);
         dataptr->fpcount += 1; /* Increment false positive count */
-        printf("Tcpip: false positive recovery %u", dataptr->fpcount);
-        rpl_trace(dataptr);
+        rpl_trace_from_packetbuf("Tcpip: false positive recovery %u", dataptr->fpcount);
         packetbuf_set_attr(PACKETBUF_ATTR_NOIP, 0);
         packetbuf_set_attr(PACKETBUF_ATTR_GOING_UP, 1);
         packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS, SICSLOWPAN_CONF_MAX_MAC_TRANSMISSIONS);
@@ -305,31 +301,19 @@ packet_sent(void *ptr, int status, int num_transmissions)
       } else
 #endif
       {
-        printf("Csma:! dropping %u after %d tx, %d collisions", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
-        rpl_trace(rpl_dataptr_from_packetbuf());
+        rpl_trace_from_packetbuf("Csma:! dropping %u after %d tx, %d collisions", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
         PRINTF("csma: drop with status %d after %d transmissions, %d collisions\n",
                status, n->transmissions, n->collisions);
         free_first_packet(n);
         mac_call_sent_callback(sent, cptr, MAC_TX_NOACK, num_tx);
       }
-//      /* Empty the neighbor queue */
-//      struct rdc_buf_list *q = list_head(n->queued_packet_list);
-//      while(q) {
-//        printf("Csma:! dropping %u while emptying queue", node_id_from_rimeaddr(&n->addr));
-//        queuebuf_to_packetbuf(q->buf);
-//        rpl_trace(rpl_dataptr_from_packetbuf());
-//        free_first_packet(n);
-//        q = list_head(n->queued_packet_list);
-//      }
     }
   } else {
     if(status == MAC_TX_OK) {
-      printf("Csma: success %u after %d tx, %d collisions", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
-      rpl_trace(rpl_dataptr_from_packetbuf());
+      rpl_trace_from_packetbuf("Csma: success %u after %d tx, %d collisions", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
       PRINTF("csma: rexmit ok %d\n", n->transmissions);
     } else {
-      printf("Csma:! dropping due to rexmit failed");
-      rpl_trace(rpl_dataptr_from_packetbuf());
+      rpl_trace_from_packetbuf("Csma:! dropping due to rexmit failed");
       PRINTF("csma: rexmit failed %d: %d\n", n->transmissions, status);
     }
     free_first_packet(n);
@@ -343,9 +327,6 @@ send_packet(mac_callback_t sent, void *ptr)
   struct rdc_buf_list *q;
   struct neighbor_queue *n;
   static uint16_t seqno = 0;
-
-//  printf("Csma: output %u bytes", packetbuf_datalen());
-//    rpl_trace(rpl_dataptr_from_packetbuf());
 
   if(seqno == 0) {
     seqno = node_id * 16 + random_rand();
@@ -421,12 +402,10 @@ send_packet(mac_callback_t sent, void *ptr)
         list_remove(neighbor_list, n);
         memb_free(&neighbor_memb, n);
       }
-      printf("Csma:! couldn't allocate packet");
-      rpl_trace(rpl_dataptr_from_packetbuf());
+      rpl_trace_from_packetbuf("Csma:! couldn't allocate packet");
       mac_call_sent_callback(sent, ptr, MAC_TX_NOACK, 1);
     } else {
-      printf("Csma:! couldn't allocate neighbor");
-      rpl_trace(rpl_dataptr_from_packetbuf());
+      rpl_trace_from_packetbuf("Csma:! couldn't allocate neighbor");
       mac_call_sent_callback(sent, ptr, MAC_TX_ERR, 1);
     }
   } else {

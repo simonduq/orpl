@@ -1586,8 +1586,6 @@ output(uip_lladdr_t *localdest)
 static void
 input(void)
 {
-//  printf("6lowpan: input");
-//    rpl_trace(rpl_dataptr_from_packetbuf());
   /* size of the IP packet (read from fragment) */
   uint16_t frag_size = 0;
   /* offset of the fragment in the IP packet */

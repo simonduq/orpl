@@ -24,7 +24,7 @@ struct app_data {
   uint8_t fpcount;
 };
 
-void rpl_trace(struct app_data *data);
+void rpl_log(struct app_data *data);
 struct app_data *rpl_dataptr_from_uip();
 struct app_data *rpl_dataptr_from_packetbuf();
 void app_data_init(struct app_data *dst, struct app_data *src);
