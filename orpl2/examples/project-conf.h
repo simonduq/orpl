@@ -92,7 +92,7 @@ typedef uint32_t rtimer_clock_t;
 #define NETSTACK_CONF_MAC     csma_driver
 
 #undef NETSTACK_CONF_RDC
-#define NETSTACK_CONF_RDC     contikimac_driver
+#define NETSTACK_CONF_RDC     contikimac_orpl_driver
 
 #define SOFTACK_ACKED_CALLBACK softack_acked_callback
 #define SOFTACK_INPUT_CALLBACK softack_input_callback

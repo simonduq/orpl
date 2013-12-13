@@ -1208,8 +1208,8 @@ duty_cycle(void)
   return (1ul * CLOCK_SECOND * CYCLE_TIME) / RTIMER_ARCH_SECOND;
 }
 /*---------------------------------------------------------------------------*/
-const struct rdc_driver contikimac_driver = {
-  "ContikiMAC",
+const struct rdc_driver contikimac_orpl_driver = {
+  "ContikiMAC-ORPL",
   init,
   qsend_packet,
   qsend_list,
