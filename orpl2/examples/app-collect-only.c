@@ -102,11 +102,10 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
     PROCESS_EXIT();
   }
 
-  random_rand();
+  cc2420_set_txpower(RF_POWER);
+  cc2420_set_cca_threshold(RSSI_THR);
   simple_energest_start();
 
-  //  etimer_set(&periodic_timer, 90 * CLOCK_SECOND);
-  //  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
   printf("App: %u starting\n", node_id);
 
   anycast_init(node_id == ROOT_ID);

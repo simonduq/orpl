@@ -1,4 +1,5 @@
 #include "deployment.h"
+#include "cooja-debug.h"
 #include "anycast.h"
 #include "net/packetbuf.h"
 #include "net/rpl/rpl.h"
@@ -733,6 +734,49 @@ is_reachable_neighbor(uip_ipaddr_t *ipv6) {
 int
 is_in_subdodag(uip_ipaddr_t *ipv6) {
   return is_id_addressable(node_id_from_ipaddr(ipv6)) && bloom_contains(&dbf, (unsigned char*)ipv6, 16);
+}
+
+static unsigned char ackbuf[3 + EXTRA_ACK_LEN] = {0x02, 0x00};
+static uint8_t last_acked = -1;
+void
+softack_acked_callback(const uint8_t *buf, uint8_t len) {
+	uint8_t seqno = buf[2];
+	last_acked = seqno;
+}
+
+void
+softack_input_callback(const uint8_t *buf, uint8_t len,
+	uint8_t **ackbufptr, uint8_t *acklen) {
+	uint8_t fcf, is_data, is_anycast, seqno;
+	int do_ack = 0;
+
+	fcf = buf[0];
+	is_data = (fcf & 7) == 1;
+	is_anycast = (fcf >> 5) & 1;
+	seqno = buf[2];
+
+	if(is_data) {
+		if(is_anycast) {
+			do_ack = frame80254_parse_anycast_irq(buf, len) & DO_ACK;
+		} else {
+			if(seqno != last_acked) {
+				do_ack = 1;
+			}
+		}
+	}
+
+	if(do_ack) { /* Prepare ack */
+		*ackbufptr = ackbuf;
+		*acklen = sizeof(ackbuf);
+		ackbuf[2] = seqno;
+		/* Append our address to the standard 15.4 ack */
+		rimeaddr_copy((rimeaddr_t*)(ackbuf+3), &rimeaddr_node_addr);
+		/* Append our rank to the ack */
+		ackbuf[3+8] = rank & 0xff;
+		ackbuf[3+8+1] = (rank >> 8)& 0xff;
+	} else {
+		*acklen = 0;
+	}
 }
 
 uint8_t

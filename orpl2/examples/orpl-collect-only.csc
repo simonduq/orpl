@@ -170,26 +170,26 @@
       <skin>se.sics.cooja.plugins.skins.AttributeVisualizerSkin</skin>
       <skin>se.sics.cooja.plugins.skins.UDGMVisualizerSkin</skin>
       <skin>se.sics.cooja.plugins.skins.MoteTypeVisualizerSkin</skin>
-      <viewport>3.422645016700439 0.0 0.0 3.422645016700439 -464.5628578210713 356.40865222200256</viewport>
+      <viewport>1.129585814092554 0.0 0.0 1.129585814092554 -123.93493657461097 136.01275650891176</viewport>
     </plugin_config>
-    <width>548</width>
-    <z>0</z>
-    <height>636</height>
+    <width>238</width>
+    <z>3</z>
+    <height>310</height>
     <location_x>6</location_x>
     <location_y>204</location_y>
   </plugin>
   <plugin>
     se.sics.cooja.plugins.LogListener
     <plugin_config>
-      <filter>#</filter>
+      <filter>App</filter>
       <formatted_time />
       <coloring />
     </plugin_config>
-    <width>863</width>
+    <width>572</width>
     <z>1</z>
-    <height>834</height>
-    <location_x>556</location_x>
-    <location_y>5</location_y>
+    <height>504</height>
+    <location_x>260</location_x>
+    <location_y>3</location_y>
   </plugin>
   <plugin>
     se.sics.cooja.plugins.TimeLine
@@ -204,28 +204,28 @@
       <mote>7</mote>
       <showRadioRXTX />
       <showRadioHW />
-      <zoomfactor>1303.6528203437733</zoomfactor>
+      <zoomfactor>44.83214771341773</zoomfactor>
     </plugin_config>
-    <width>1854</width>
-    <z>3</z>
-    <height>315</height>
-    <location_x>4</location_x>
-    <location_y>839</location_y>
+    <width>1297</width>
+    <z>0</z>
+    <height>208</height>
+    <location_x>7</location_x>
+    <location_y>515</location_y>
   </plugin>
   <plugin>
     se.sics.cooja.plugins.RadioLogger
     <plugin_config>
-      <split>428</split>
+      <split>421</split>
       <formatted_time />
       <showdups>false</showdups>
       <hidenodests>false</hidenodests>
       <analyzers name="6lowpan" />
     </plugin_config>
-    <width>441</width>
+    <width>450</width>
     <z>2</z>
-    <height>828</height>
-    <location_x>1417</location_x>
-    <location_y>8</location_y>
+    <height>511</height>
+    <location_x>826</location_x>
+    <location_y>-2</location_y>
   </plugin>
 </simconf>
 

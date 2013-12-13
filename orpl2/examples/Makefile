@@ -1,12 +1,12 @@
 CONTIKI=../../contiki
-CONTIKI_PROJECT = app-collect-only app-down-only
+CONTIKI_PROJECT = app-collect-only
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 TARGET=sky
 
 WITH_UIP6=1
 UIP_CONF_IPV6=1
 CFLAGS+= -DUIP_CONF_IPV6_RPL -I-
-PROJECT_SOURCEFILES += bloom.c simple-energest.c rpl-tools.c
+PROJECT_SOURCEFILES += bloom.c simple-energest.c rpl-tools.c cc2420-softack.c
 
 ifdef NO_WARNINGS
 	CFLAGS += -w

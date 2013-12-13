@@ -35,7 +35,6 @@
 
 #include <string.h>
 
-#include "deployment.h"
 #include "contiki.h"
 
 #if defined(__AVR__)
@@ -59,8 +58,6 @@
 
 volatile int need_flush;
 extern int contikimac_keep_radio_on;
-
-#define RSSI_THR -14
 
 #define WITH_SEND_CCA 1
 
@@ -114,6 +111,8 @@ int cc2420_authority_level_of_sender;
 
 int cc2420_packets_seen, cc2420_packets_read;
 
+static uint8_t volatile pending;
+
 #define BUSYWAIT_UNTIL(cond, max_time)                                  \
   do {                                                                  \
     rtimer_clock_t t0;                                                  \
@@ -127,7 +126,7 @@ volatile uint16_t cc2420_sfd_end_time;
 
 static volatile uint16_t last_packet_timestamp = 0xffff;
 /*---------------------------------------------------------------------------*/
-PROCESS(cc2420_process, "CC2420 driver");
+PROCESS(cc2420_process, "CC2420-softack driver");
 /*---------------------------------------------------------------------------*/
 
 /* Read a byte from RAM in the CC2420 */
@@ -160,7 +159,7 @@ static int cc2420_cca(void);
 signed char cc2420_last_rssi;
 uint8_t cc2420_last_correlation;
 
-const struct radio_driver cc2420_driver =
+const struct radio_driver cc2420_softack_driver =
   {
     cc2420_init,
     cc2420_prepare,
@@ -191,40 +190,6 @@ flushrx(void)
   CC2420_STROBE(CC2420_SFLUSHRX);
   CC2420_STROBE(CC2420_SFLUSHRX);
 }
-
-//static void
-//getrxdata(void *buf, int len)
-//{
-//#if IN_COOJA
-//#define TIME_TO_WAIT_FOR_SPI_BYTE RTIMER_ARCH_SECOND/4000
-//      uint8_t i;
-//      CC2420_SPI_ENABLE();
-//      SPI_WRITE(CC2420_RXFIFO | 0x40);
-//      (void)SPI_RXBUF;
-//      for(i = 0; i < len; i++) {
-//        rtimer_clock_t start = RTIMER_NOW();
-//        while(!CC2420_FIFO_IS_1 &&
-//            RTIMER_CLOCK_LT(RTIMER_NOW(), (start + TIME_TO_WAIT_FOR_SPI_BYTE)));
-//        if(CC2420_FIFO_IS_1) {
-//          SPI_READ(((uint8_t *)buf)[i]);
-//        } else {
-//  //        printf("abort spi read %d/%d\n", i, len);
-//          flushrx();
-//          break;
-//        }
-//      }
-//      clock_delay(1);
-//      CC2420_SPI_DISABLE();
-//#else
-//      CC2420_READ_FIFO_BUF(buf, len);
-//#endif
-//}
-
-//static void
-//getrxbyte(uint8_t *byte)
-//{
-//  CC2420_READ_FIFO_BYTE(*byte);
-//}
 /*---------------------------------------------------------------------------*/
 static void
 strobe(enum cc2420_register regname)
@@ -240,6 +205,7 @@ status(void)
   return status;
 }
 /*---------------------------------------------------------------------------*/
+/* Used in interrupt and need to be volatile */
 static volatile uint8_t locked, lock_on, lock_off;
 
 static void
@@ -254,7 +220,7 @@ on(void)
   receive_on = 1;
 }
 static void
-off()
+off(void)
 {
   /*  PRINTF("off\n");*/
   receive_on = 0;
@@ -265,10 +231,6 @@ off()
   ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
   strobe(CC2420_SRFOFF);
   CC2420_DISABLE_FIFOP_INT();
-
-//  if(!CC2420_FIFOP_IS_1) {
-//    flushrx();
-//  }
 }
 /*---------------------------------------------------------------------------*/
 #define GET_LOCK() locked++
@@ -366,7 +328,7 @@ cc2420_init(void)
   reg |= RXBPF_LOCUR;
   setreg(CC2420_RXCTRL1, reg);
 
-  /* Set the FIFOP threshold to maximum. */
+  /* Set FIFOP threshold */
   setreg(CC2420_IOCFG0, FIFOP_THR(FIFOP_THRESHOLD));
 
   /* Turn off "Security enable" (page 32). */
@@ -376,10 +338,6 @@ cc2420_init(void)
 
   cc2420_set_pan_addr(0xffff, 0x0000, NULL);
   cc2420_set_channel(26);
-
-  cc2420_set_txpower(RF_POWER);
-
-  cc2420_set_cca_threshold(-32 + RSSI_THR);
 
   flushrx();
 
@@ -659,6 +617,8 @@ TIMETABLE(cc2420_timetable);
 TIMETABLE_AGGREGATE(aggregate_time, 10);
 #endif /* CC2420_TIMETABLE_PROFILING */
 
+/* Struct used to store received frames from interrupt,
+ * to be read later from cc2420_process */
 struct received_frame_s {
   struct received_frame_s *next;
   uint8_t buf[CC2420_MAX_PACKET_LEN];
@@ -674,18 +634,17 @@ LIST(rf_list);
 #define RXFIFO_SIZE   128
 #define RXFIFO_ADDR(index) (RXFIFO_START + (index) % RXFIFO_SIZE)
 
-static int dup_count = 0;
 int
 cc2420_interrupt(void)
 {
-  uint8_t len, fcf, seqno, footer1, is_anycast, is_data;
+  uint8_t len, seqno, footer1;
   uint8_t len_a, len_b;
-//  uint8_t footer[2];
-  int do_ack = 0;
+  uint8_t *ackbuf, acklen;
+
+  int do_ack;
   int frame_valid = 0;
   struct received_frame_s *rf;
   struct received_frame_s *last_rf;
-  static int last_acked = -1;
 
   process_poll(&cc2420_process);
 
@@ -694,7 +653,7 @@ cc2420_interrupt(void)
   TIMETABLE_TIMESTAMP(cc2420_timetable, "interrupt");
 #endif /* CC2420_TIMETABLE_PROFILING */
 
-  /* If the lock is taken, we cannot access the FIFO. */
+  /* If the lock is taken, we cannot access the FIFO, just drop frame (flush it) */
   if(locked || need_flush) {
     need_flush = 1;
     CC2420_CLEAR_FIFOP_INT();
@@ -710,6 +669,7 @@ cc2420_interrupt(void)
     return 1;
   }
 
+  /* Read len from FIFO */
   CC2420_READ_RAM_BYTE(len, RXFIFO_ADDR(0));
 
   if(len > CC2420_MAX_PACKET_LEN
@@ -735,59 +695,26 @@ cc2420_interrupt(void)
   list_add(rf_list, rf);
 
   len -= AUX_LEN;
+  /* len_a: length up to max FIFOP_THRESHOLD */
   len_a = len > FIFOP_THRESHOLD ? FIFOP_THRESHOLD : len;
+  /* len_b: remaining length */
   len_b = len - len_a;
   rf->len = len;
   rf->acked = 0;
   CC2420_READ_RAM(rf->buf, RXFIFO_ADDR(1), len_a);
 
-  fcf = rf->buf[0];
   seqno = rf->buf[2];
   rf->seqno = seqno;
-  is_data = (fcf & 7) == 1;
-  is_anycast = (fcf >> 5) & 1;
 
-  if(is_data) {
-    if(is_anycast) {
-      do_ack = frame80254_parse_anycast_irq(rf->buf, len_a) & DO_ACK;
-#if SELECT_ACK
-      if(do_ack && seqno == last_acked) {
-        do_ack = random_rand() % 2;
-        if(last_rf) last_rf->acked = do_ack;
-      }
-#endif
-    } else {
-      if(seqno != last_acked) {
-        do_ack = 1;
-      }
-    }
-  }
+  SOFTACK_INPUT_CALLBACK(rf->buf, len_a, &ackbuf, &acklen);
+  do_ack = acklen > 0;
 
-  unsigned char ackbuf[3 + EXTRA_ACK_LEN] = {0x02, 0x00, seqno};
-//  memset(ackbuf + 3, 0, EXTRA_ACK_LEN);
-  uint8_t total_acklen = sizeof(ackbuf) + AUX_LEN;
-
-  if(do_ack) {   /* Prepare ack */
-#if SELECT_ACK
-    if(!is_anycast)
-    {
-#endif
-      /* Append our address to the standard 15.4 ack */
-      rimeaddr_copy((rimeaddr_t*)(ackbuf+3), &rimeaddr_node_addr);
-      /* Append our rank to the ack */
-      ackbuf[3+8] = rank & 0xff;
-      ackbuf[3+8+1] = (rank >> 8)& 0xff;
-
-      /* Write ack in fifo */
-      CC2420_STROBE(CC2420_SFLUSHTX);
-      CC2420_WRITE_FIFO_BUF(&total_acklen, 1);
-      CC2420_WRITE_FIFO_BUF(ackbuf, 3 + EXTRA_ACK_LEN);
-#if SELECT_ACK
-    }
-    else {
-      strobe(CC2420_SACK); /* Send ACK */
-    }
-#endif
+  if(do_ack) {
+	  uint8_t total_acklen = acklen + AUX_LEN;
+	  /* Write ack in fifo */
+	  CC2420_STROBE(CC2420_SFLUSHTX);
+	  CC2420_WRITE_FIFO_BUF(&total_acklen, 1);
+	  CC2420_WRITE_FIFO_BUF(ackbuf, acklen);
   }
 
   /* Wait for end of reception */
@@ -800,50 +727,27 @@ cc2420_interrupt(void)
 
   if(!overflow && (footer1 & FOOTER1_CRC_OK)) { /* CRC is correct */
     if(do_ack) {
-#if SELECT_ACK
-      if(!is_anycast)
-#endif
-      {
-        strobe(CC2420_STXON); /* Send ACK */
-      }
+      strobe(CC2420_STXON); /* Send ACK */
       rf->acked = 1;
     }
     frame_valid = 1;
   } else { /* CRC is wrong */
-    if(do_ack
-#if SELECT_ACK
-        && !is_anycast
-#endif
-        ) {
+    if(do_ack) {
       CC2420_STROBE(CC2420_SFLUSHTX); /* Flush Tx fifo */
     }
     list_chop(rf_list);
     memb_free(&rf_memb, rf);
   }
 
+// TODO: check if needed
   extern volatile unsigned char we_are_sending;
-  if(!we_are_sending
-#if SELECT_ACK
-      && !is_anycast
-#endif
-      ) {
-    /* Turn the radio off */
+  if(!we_are_sending) {
+    /* Turn the radio off as early as possible */
     off();
   }
 
-#if SELECT_ACK
-  if(is_anycast) {
-    if(seqno == last_acked) {
-      list_chop(rf_list);
-      memb_free(&rf_memb, rf);
-      rf = NULL;
-      dup_count++;
-    }
-  }
-#endif
-
   if(frame_valid && do_ack) {
-    last_acked = seqno;
+	SOFTACK_ACKED_CALLBACK(rf->buf, len_a);
     last_rf = rf;
   } else {
     last_rf = NULL;
@@ -859,24 +763,7 @@ cc2420_interrupt(void)
    * we don't want to lose track of where we are in the FIFO) */
   flushrx();
 
-#if SELECT_ACK
-  if(is_anycast && do_ack) {
-    static rtimer_clock_t start;
-    start = RTIMER_NOW();
-    while(RTIMER_CLOCK_LT(RTIMER_NOW(), (start + 4*RTIMER_ARCH_SECOND/1000))) {
-      if(CC2420_FIFOP_IS_1) {
-        break;
-      }
-    }
-    if(!CC2420_FIFOP_IS_1) {
-      off();
-      CC2420_CLEAR_FIFOP_INT();
-    }
-  } else
-#endif
-  {
-    CC2420_CLEAR_FIFOP_INT();
-  }
+  CC2420_CLEAR_FIFOP_INT();
 
   RELEASE_LOCK();
   return 1;
@@ -904,6 +791,7 @@ PROCESS_THREAD(cc2420_process, ev, data)
       flushrx();
       RELEASE_LOCK();
     }
+// TODO: check if needed
     if(contikimac_keep_radio_on) {
       on();
     }
@@ -918,33 +806,10 @@ PROCESS_THREAD(cc2420_process, ev, data)
       len = 0;
     }
     packetbuf_set_datalen(len);
-
-    if(len > 0) {
-//      uint8_t seqno = ((uint8_t*)packetbuf_dataptr())[2];
-
-      uint16_t rank;
-      int ret = frame80254_parse_anycast_process(packetbuf_dataptr(), len, current_is_acked, &rank);
-
-      if(ret & IS_ANYCAST) {
-        packetbuf_set_attr(PACKETBUF_ATTR_DUP_COUNT, dup_count);
-        if(dup_count > 0) {
-          dup_count = 0;
-        }
-        packetbuf_set_attr(PACKETBUF_ATTR_IS_ANYCAST, (ret & IS_ANYCAST) != 0);
-//        packetbuf_set_attr(PACKETBUF_ATTR_FROM_SUBDODAG, (ret & FROM_SUBDODAG) != 0);
-        packetbuf_set_attr(PACKETBUF_ATTR_IS_RECOVERY, (ret & IS_RECOVERY) != 0);
-        packetbuf_set_attr(PACKETBUF_ATTR_DO_ACK, current_is_acked);
-        packetbuf_set_attr(PACKETBUF_ATTR_EDC, rank);
-      } else {
-        packetbuf_set_attr(PACKETBUF_ATTR_EDC, 0xffff);
-      }
-    }
+    packetbuf_set_attr(PACKETBUF_ATTR_ACKED, current_is_acked);
 
     NETSTACK_RDC.input();
 
-    if(len > 0) {
-      neighbor_info_packet_received();
-    }
 #if CC2420_TIMETABLE_PROFILING
     TIMETABLE_TIMESTAMP(cc2420_timetable, "end");
     timetable_aggregate_compute_detailed(&aggregate_time,

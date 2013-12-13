@@ -1062,6 +1062,22 @@ input_packet(void)
     off();
   }
 
+  if(packetbuf_datalen() > 0) {
+    uint16_t rank;
+    int ret = frame80254_parse_anycast_process(packetbuf_dataptr(), packetbuf_datalen(),
+    		packetbuf_attr(PACKETBUF_ATTR_ACKED), &rank);
+
+    if(ret & IS_ANYCAST) {
+      packetbuf_set_attr(PACKETBUF_ATTR_IS_ANYCAST, (ret & IS_ANYCAST) != 0);
+      packetbuf_set_attr(PACKETBUF_ATTR_IS_RECOVERY, (ret & IS_RECOVERY) != 0);
+      packetbuf_set_attr(PACKETBUF_ATTR_EDC, rank);
+    } else {
+      packetbuf_set_attr(PACKETBUF_ATTR_EDC, 0xffff);
+    }
+
+    neighbor_info_packet_received();
+  }
+
   /*  printf("cycle_start 0x%02x 0x%02x\n", cycle_start, cycle_start % CYCLE_TIME);*/
 
 #ifdef NETSTACK_DECRYPT
@@ -1088,7 +1104,7 @@ input_packet(void)
                      &rimeaddr_node_addr) ||
         rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
                      &rimeaddr_null)) &&
-       (!(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST) && !packetbuf_attr(PACKETBUF_ATTR_DO_ACK))) /* Anycast that we don't ack are not for us */
+       (!(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST) && !packetbuf_attr(PACKETBUF_ATTR_ACKED))) /* Anycast that we don't ack are not for us */
     ) {
       /* This is a regular packet that is destined to us or to the
          broadcast address. */
@@ -1183,9 +1199,8 @@ input_packet(void)
           received_app_seqnos[0].seqno = seqno;
         }
 
-        printf("Cmac: input from %d nd %u",
-            node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)),
-            packetbuf_attr(PACKETBUF_ATTR_DUP_COUNT)
+        printf("Cmac: input from %d",
+            node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER))
         );
         rpl_trace(dataptr);
       }
@@ -1203,10 +1218,6 @@ input_packet(void)
           prev_seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
         }
       }
-//      printf("contikimac: data not for us %d %d %d %d %d ", packetbuf_datalen(), packetbuf_totlen(), packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST), packetbuf_attr(PACKETBUF_ATTR_DO_ACK), packetbuf_attr(PACKETBUF_ATTR_PACKET_ID));
-//      uip_debug_lladdr_print(packetbuf_addr(PACKETBUF_ADDR_RECEIVER));
-//      printf("\n");
-//      rpl_trace(rpl_dataptr_from_packetbuf());
     }
   } else {
     if(packetbuf_totlen() > 0) printf("Cmac: failed to parse (%u)\n", packetbuf_totlen());

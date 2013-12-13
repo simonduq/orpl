@@ -77,7 +77,7 @@
 //#define CC2420_TXPOWER_MAX  31
 //#define CC2420_TXPOWER_MIN   0
 #define RF_POWER                31
-//#define RF_POWER                7
+#define RSSI_THR				(-32-14)
 
 /* 32-bit rtimer */
 #define RTIMER_CONF_SECOND (4096UL*8)
@@ -86,6 +86,20 @@ typedef uint32_t rtimer_clock_t;
 
 #define CONTIKIMAC_CONF_CYCLE_TIME (CMD_CYCLE_TIME * RTIMER_ARCH_SECOND / 1000)
 
+#undef NETSTACK_CONF_MAC
+#define NETSTACK_CONF_MAC     csma_driver
+
+#undef NETSTACK_CONF_RDC
+#define NETSTACK_CONF_RDC     contikimac_driver
+
+#define SOFTACK_ACKED_CALLBACK softack_acked_callback
+#define SOFTACK_INPUT_CALLBACK softack_input_callback
+
+#undef NETSTACK_CONF_RADIO
+#define NETSTACK_CONF_RADIO   cc2420_softack_driver
+
+#undef NETSTACK_CONF_FRAMER
+#define NETSTACK_CONF_FRAMER  framer_802154
 
 #undef CSMA_CONF_MAX_NEIGHBOR_QUEUES
 #define CSMA_CONF_MAX_NEIGHBOR_QUEUES 4
