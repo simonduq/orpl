@@ -94,9 +94,9 @@ endif
 
 CONTIKI_SOURCEFILES += $(CONTIKIFILES)
 
-CONTIKIDIRS_REL = dev lib net net/mac net/rime net/rpl sys cfs ctk lib/ctk loader tools deployment .
+CONTIKIDIRS_REL = dev lib net net/mac net/rime net/rpl sys cfs ctk lib/ctk loader tools .
 CONTIKIDIRS += ${addprefix $(CONTIKI)/core/, $(CONTIKIDIRS_REL) }
-CONTIKIDIRS_LOCAL += . ${addprefix ../, $(CONTIKIDIRS_REL) }
+CONTIKIDIRS_LOCAL += . deployment ${addprefix ../, $(CONTIKIDIRS_REL) }
 
 oname = ${patsubst %.c,%.o,${patsubst %.S,%.o,$(1)}}
 
