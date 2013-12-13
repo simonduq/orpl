@@ -7,9 +7,6 @@ static uint32_t last_tx, last_rx, last_time;
 static uint32_t delta_tx, delta_rx, delta_time;
 static uint32_t curr_tx, curr_rx, curr_time;
 
-uint32_t packet_seen_count = 0;
-uint32_t sfd_decoded_count = 0;
-
 PROCESS(simple_energest_process, "Simple Energest");
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(simple_energest_process, ev, data)
@@ -65,6 +62,4 @@ void simple_energest_step() {
   if(cpt % 8 == 0) {
     debug_ranks();
   }
-
-  printf("cc2420: seen %lu decoded %lu (%lu %%)\n", packet_seen_count, sfd_decoded_count, packet_seen_count ? (100*sfd_decoded_count) / packet_seen_count : 0);
 }
