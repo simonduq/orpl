@@ -293,7 +293,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
         blacklist_insert(data.seqno);
         dataptr->fpcount += 1; /* Increment false positive count */
         rpl_trace_from_packetbuf("Tcpip: false positive recovery %u", dataptr->fpcount);
-        packetbuf_set_attr(PACKETBUF_ATTR_NOIP, 0);
+        packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 0);
         packetbuf_set_attr(PACKETBUF_ATTR_GOING_UP, 1);
         packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS, SICSLOWPAN_CONF_MAX_MAC_TRANSMISSIONS);
         packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &anycast_addr_recover);
@@ -426,7 +426,8 @@ input_packet(void)
                        &rimeaddr_null)) {
 //      printf("Csma: received broadcast from %u (%u bytes)\n", src_id, packetbuf_datalen());
     }
-    if(packetbuf_attr(PACKETBUF_ATTR_NOIP)) {
+    /* We use frame pending bit to tell that this is a no-IP packet containing a Bloom filter */
+    if(packetbuf_attr(PACKETBUF_ATTR_PENDING)) {
       received_noip();
     } else {
       NETSTACK_NETWORK.input();

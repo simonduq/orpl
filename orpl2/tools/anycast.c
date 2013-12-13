@@ -410,7 +410,8 @@ void bloom_do_broadcast(void *ptr) {
     packetbuf_clear();
     packetbuf_copyfrom(&bloom_broadcast, sizeof(struct bloom_broadcast_s));
     packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &rimeaddr_null);
-    packetbuf_set_attr(PACKETBUF_ATTR_NOIP, 1);
+    /* We use frame pending bit to tell that this is a no-IP packet containing a Bloom filter */
+    packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 1);
     NETSTACK_MAC.send(&packet_sent, NULL);
 
     sending_bloom = 0;

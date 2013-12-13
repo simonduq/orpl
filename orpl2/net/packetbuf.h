@@ -355,7 +355,6 @@ enum {
   PACKETBUF_ATTR_IS_RECOVERY,
 
   /* Scope 1 attributes: used between two neighbors only. */
-  PACKETBUF_ATTR_NOIP,
 //  PACKETBUF_ATTR_RELIABLE,
   PACKETBUF_ATTR_PACKET_ID,
   PACKETBUF_ATTR_PACKET_TYPE,

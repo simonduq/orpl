@@ -959,9 +959,9 @@ qsend_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
 
     /* Prepare the packetbuf */
     queuebuf_to_packetbuf(curr->buf);
-    if(next != NULL) {
-      packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 1);
-    }
+//    if(next != NULL) {
+//      packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 1);
+//    }
 
     /* Send the current packet */
     ret = send_packet(sent, ptr, curr);
