@@ -47,16 +47,17 @@
 #include "lib/random.h"
 
 #include "net/netstack.h"
-#include "tools/rpl-tools.h"
 
 #include "lib/list.h"
 #include "lib/memb.h"
 
 #include "node-id.h"
+#if WITH_ORPL
 #include "net/uip.h"
 #include "anycast.h"
-#include "rpl-tools.h"
+#include "tools/rpl-tools.h"
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
+#endif /* WITH_ORPL */
 
 #include <string.h>
 
@@ -113,7 +114,6 @@ MEMB(packet_memb, struct rdc_buf_list, MAX_QUEUED_PACKETS);
 MEMB(metadata_memb, struct qbuf_metadata, MAX_QUEUED_PACKETS);
 LIST(neighbor_list);
 
-int csma_freebuf_count = MAX_QUEUED_PACKETS;
 static void packet_sent(void *ptr, int status, int num_transmissions);
 static void transmit_packet_list(void *ptr);
 
@@ -167,7 +167,6 @@ free_first_packet(struct neighbor_queue *n)
 {
   struct rdc_buf_list *q = list_head(n->queued_packet_list);
   if(q != NULL) {
-    csma_freebuf_count++;
     /* Remove first packet from list and deallocate */
     queuebuf_free(q->buf);
     list_pop(n->queued_packet_list);
@@ -218,13 +217,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
 
   sent = metadata->sent;
   cptr = metadata->cptr;
-#if (BLOOM_FP_RECOVERY == 1)
   num_tx = n->transmissions;
-#else
-  num_tx = n->transmissions + n->collisions/8;
-#endif
-
-//  int pseudo_tx_count = n->transmissions + (n->collisions / 4);
 
   if(status == MAC_TX_COLLISION ||
      status == MAC_TX_NOACK) {
@@ -243,37 +236,25 @@ packet_sent(void *ptr, int status, int num_transmissions)
       PRINTF("csma: rexmit err %d, %d\n", status, n->transmissions);
     }
 
-    if(status == MAC_TX_COLLISION) {
-      time = n->collisions * default_timebase() / 16;
-      if(time > default_timebase() / 2) {
-        time = default_timebase() / 2;
-      }
-    } else {
-      int i;
-      /* The retransmission time must be proportional to the channel
-         check interval of the underlying radio duty cycling layer. */
-      time = default_timebase() / 3;
+    /* The retransmission time must be proportional to the channel
+       check interval of the underlying radio duty cycling layer. */
+    time = default_timebase();
 
-      /* The retransmission time uses a linear backoff so that the
-         interval between the transmissions increase with each
-         retransmit. */
+    /* The retransmission time uses a linear backoff so that the
+       interval between the transmissions increase with each
+       retransmit. */
+    backoff_transmissions = n->transmissions + 1;
 
-      backoff_transmissions = 1;
-      for(i=0; i<num_tx-1; i++) {
-        backoff_transmissions *= 3;
-      }
-
-//      /* Clamp the number of backoffs so that we don't get a too long
-//         timeout here, since that will delay all packets in the
-//         queue. */
-      if(backoff_transmissions > 3*3) {
-        backoff_transmissions = 3*3;
-      }
-
-      time = (random_rand() % (backoff_transmissions * time ));
+    /* Clamp the number of backoffs so that we don't get a too long
+       timeout here, since that will delay all packets in the
+       queue. */
+    if(backoff_transmissions > 3) {
+      backoff_transmissions = 3;
     }
 
-    if(num_tx < metadata->max_transmissions) {
+    time = time + (random_rand() % (backoff_transmissions * time));
+
+    if(n->transmissions < metadata->max_transmissions) {
       PRINTF("csma: retransmitting with time %lu %p\n", time, q);
       ctimer_set(&n->transmit_timer, time,
                  transmit_packet_list, n);
@@ -281,7 +262,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
          transmitting this packet. */
       queuebuf_update_attr_from_packetbuf(q->buf);
     } else {
-#if (BLOOM_FP_RECOVERY == 1)
+#if WITH_ORPL && BLOOM_FP_RECOVERY
       if(!is_edc_root && packetbuf_attr(PACKETBUF_ATTR_GOING_UP) == 0) { /* Failed downwards transmission. Trigger false positive recovery. */
         //TODO: don't use dataptr (r seqno, rw fpcount)
         struct app_data *dataptr = rpl_dataptr_from_packetbuf();
@@ -299,13 +280,13 @@ packet_sent(void *ptr, int status, int num_transmissions)
         packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &anycast_addr_recover);
         NETSTACK_MAC.send(sent, cptr);
       } else
-#endif
+#endif /* WITH_ORPL && BLOOM_FP_RECOVERY */
       {
-        rpl_trace_from_packetbuf("Csma:! dropping %u after %d tx, %d collisions", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
-        PRINTF("csma: drop with status %d after %d transmissions, %d collisions\n",
-               status, n->transmissions, n->collisions);
-        free_first_packet(n);
-        mac_call_sent_callback(sent, cptr, MAC_TX_NOACK, num_tx);
+      rpl_trace_from_packetbuf("Csma:! dropping %u after %d tx, %d collisions", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
+      PRINTF("csma: drop with status %d after %d transmissions, %d collisions\n",
+             status, n->transmissions, n->collisions);
+      free_first_packet(n);
+      mac_call_sent_callback(sent, cptr, status, num_tx);
       }
     }
   } else {
@@ -338,8 +319,13 @@ send_packet(mac_callback_t sent, void *ptr)
      entry. Instead, just send it out.  */
   if(!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
                    &rimeaddr_null)) {
-    //const rimeaddr_t *addr = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
+#if WITH_ORPL
+    /* Using packetbuf address would lead to a single queue for all anycasts. 
+     * We use the IPv6 UUID to have one queue per destination instead. */
     const rimeaddr_t *addr = (const rimeaddr_t *)(((uint8_t*)&UIP_IP_BUF->destipaddr)+8);
+#else /* WITH_ORPL */
+    const rimeaddr_t *addr = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
+#endif /* WITH_ORPL */
 
     /* Look for the neighbor entry */
     n = neighbor_queue_from_addr(addr);
@@ -367,7 +353,6 @@ send_packet(mac_callback_t sent, void *ptr)
         if(q->ptr != NULL) {
           q->buf = queuebuf_new_from_packetbuf();
           if(q->buf != NULL) {
-            csma_freebuf_count--;
             struct qbuf_metadata *metadata = (struct qbuf_metadata *)q->ptr;
             /* Neighbor and packet successfully allocated */
             if(packetbuf_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS) == 0) {
@@ -394,25 +379,31 @@ send_packet(mac_callback_t sent, void *ptr)
             return;
           }
           memb_free(&metadata_memb, q->ptr);
+          PRINTF("csma: could not allocate queuebuf, dropping packet\n");
         }
         memb_free(&packet_memb, q);
+        PRINTF("csma: could not allocate queuebuf, dropping packet\n");
       }
       /* The packet allocation failed. Remove and free neighbor entry if empty. */
       if(list_length(n->queued_packet_list) == 0) {
         list_remove(neighbor_list, n);
         memb_free(&neighbor_memb, n);
       }
+      PRINTF("csma: could not allocate packet, dropping packet\n");
       rpl_trace_from_packetbuf("Csma:! couldn't allocate packet");
-      mac_call_sent_callback(sent, ptr, MAC_TX_NOACK, 1);
     } else {
+      PRINTF("csma: could not allocate neighbor, dropping packet\n");
       rpl_trace_from_packetbuf("Csma:! couldn't allocate neighbor");
-      mac_call_sent_callback(sent, ptr, MAC_TX_ERR, 1);
     }
+    mac_call_sent_callback(sent, ptr, MAC_TX_ERR, 1);
   } else {
-    printf("Csma: send broadcast (%u bytes)\n", packetbuf_datalen());
+    #if WITH_ORPL
+    rpl_trace("Csma: send broadcast (%u bytes)\n", packetbuf_datalen());
     if(sending_bloom) {
       packetbuf_set_attr(PACKETBUF_ATTR_SEND_BLOOM, 1);
     }
+    #endif /* WITH_ORPL */
+    PRINTF("csma: send broadcast\n");
     NETSTACK_RDC.send(sent, ptr);
   }
 }
@@ -420,11 +411,11 @@ send_packet(mac_callback_t sent, void *ptr)
 static void
 input_packet(void)
 {
+#if WITH_ORPL
   uint16_t src_id = node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER));
   if(src_id != 0) {
     if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
                        &rimeaddr_null)) {
-//      printf("Csma: received broadcast from %u (%u bytes)\n", src_id, packetbuf_datalen());
     }
     /* We use frame pending bit to tell that this is a no-IP packet containing a Bloom filter */
     if(packetbuf_attr(PACKETBUF_ATTR_PENDING)) {
@@ -433,6 +424,9 @@ input_packet(void)
       NETSTACK_NETWORK.input();
     }
   }
+#else /* WITH_ORPL */
+  NETSTACK_NETWORK.input();
+#endif /* WITH_ORPL */
 }
 /*---------------------------------------------------------------------------*/
 static int

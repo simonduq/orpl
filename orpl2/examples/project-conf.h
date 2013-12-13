@@ -32,6 +32,8 @@
 #ifndef __PROJECT_CONF_H__
 #define __PROJECT_CONF_H__
 
+#define WITH_ORPL 1
+
 /* RPL and neighborhood information */
 
 #undef RPL_CONF_STATS
