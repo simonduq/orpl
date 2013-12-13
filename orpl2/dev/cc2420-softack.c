@@ -739,7 +739,10 @@ cc2420_interrupt(void)
     memb_free(&rf_memb, rf);
   }
 
-// TODO: check if needed
+/* TODO: fixme. This ensures there is always a single packet in queue.
+ * With more than one packet in queue, some corner cases seem to break
+ * this softack code. The current workaroud in ContikiMAC-specific.
+ */
   extern volatile unsigned char we_are_sending;
   if(!we_are_sending) {
     /* Turn the radio off as early as possible */
@@ -791,7 +794,11 @@ PROCESS_THREAD(cc2420_process, ev, data)
       flushrx();
       RELEASE_LOCK();
     }
-// TODO: check if needed
+
+    /* TODO: fixme. This ensures there is always a single packet in queue.
+     * With more than one packet in queue, some corner cases seem to break
+     * this softack code. The current workaroud in ContikiMAC-specific.
+     */
     if(contikimac_keep_radio_on) {
       on();
     }
