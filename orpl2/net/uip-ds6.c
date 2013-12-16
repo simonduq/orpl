@@ -160,106 +160,107 @@ uip_ds6_init(void)
 void
 uip_ds6_periodic(void)
 {
-//
-//  /* Periodic processing on unicast addresses */
-//  for(locaddr = uip_ds6_if.addr_list;
-//      locaddr < uip_ds6_if.addr_list + UIP_DS6_ADDR_NB; locaddr++) {
-//    if(locaddr->isused) {
-//      if((!locaddr->isinfinite) && (stimer_expired(&locaddr->vlifetime))) {
-//        uip_ds6_addr_rm(locaddr);
-//#if UIP_ND6_DEF_MAXDADNS > 0
-//      } else if((locaddr->state == ADDR_TENTATIVE)
-//                && (locaddr->dadnscount <= uip_ds6_if.maxdadns)
-//                && (timer_expired(&locaddr->dadtimer))
-//                && (uip_len == 0)) {
-//        uip_ds6_dad(locaddr);
-//#endif /* UIP_ND6_DEF_MAXDADNS > 0 */
-//      }
-//    }
-//  }
-//
-//  /* Periodic processing on default routers */
-//  uip_ds6_defrt_periodic();
-//  /*  for(locdefrt = uip_ds6_defrt_list;
-//      locdefrt < uip_ds6_defrt_list + UIP_DS6_DEFRT_NB; locdefrt++) {
-//    if((locdefrt->isused) && (!locdefrt->isinfinite) &&
-//       (stimer_expired(&(locdefrt->lifetime)))) {
-//      uip_ds6_defrt_rm(locdefrt);
-//    }
-//    }*/
-//
-//#if !UIP_CONF_ROUTER
-//  /* Periodic processing on prefixes */
-//  for(locprefix = uip_ds6_prefix_list;
-//      locprefix < uip_ds6_prefix_list + UIP_DS6_PREFIX_NB;
-//      locprefix++) {
-//    if(locprefix->isused && !locprefix->isinfinite
-//       && stimer_expired(&(locprefix->vlifetime))) {
-//      uip_ds6_prefix_rm(locprefix);
-//    }
-//  }
-//#endif /* !UIP_CONF_ROUTER */
 
-//  /* Periodic processing on neighbors */
-//  for(locnbr = uip_ds6_nbr_cache;
-//      locnbr < uip_ds6_nbr_cache + UIP_DS6_NBR_NB;
-//      locnbr++) {
-//    if(locnbr->isused) {
-//      switch(locnbr->state) {
-//      case NBR_INCOMPLETE:
-//        if(locnbr->nscount >= UIP_ND6_MAX_MULTICAST_SOLICIT) {
-//          uip_ds6_nbr_rm(locnbr);
-//        } else if(stimer_expired(&locnbr->sendns) && (uip_len == 0)) {
-//          locnbr->nscount++;
-//          PRINTF("NBR_INCOMPLETE: NS %u\n", locnbr->nscount);
-//          uip_nd6_ns_output(NULL, NULL, &locnbr->ipaddr);
-//          stimer_set(&locnbr->sendns, uip_ds6_if.retrans_timer / 1000);
-//        }
-//        break;
-//      case NBR_REACHABLE:
-//        if(stimer_expired(&locnbr->reachable)) {
-//          PRINTF("REACHABLE: moving to STALE (");
-//          PRINT6ADDR(&locnbr->ipaddr);
-//          PRINTF(")\n");
-//          locnbr->state = NBR_STALE;
-//        }
-//        break;
-//      case NBR_DELAY:
-//        if(stimer_expired(&locnbr->reachable) && (uip_len == 0)) {
-//          locnbr->state = NBR_PROBE;
-//          locnbr->nscount = 1;
-//          PRINTF("DELAY: moving to PROBE + NS %u\n", locnbr->nscount);
-//          uip_nd6_ns_output(NULL, &locnbr->ipaddr, &locnbr->ipaddr);
-//          stimer_set(&locnbr->sendns, uip_ds6_if.retrans_timer / 1000);
-//        }
-//        break;
-//      case NBR_PROBE:
-//        if(locnbr->nscount >= UIP_ND6_MAX_UNICAST_SOLICIT) {
-//          PRINTF("PROBE END\n");
-//          if((locdefrt = uip_ds6_defrt_lookup(&locnbr->ipaddr)) != NULL) {
-//            uip_ds6_defrt_rm(locdefrt);
-//          }
-//          uip_ds6_nbr_rm(locnbr);
-//        } else if(stimer_expired(&locnbr->sendns) && (uip_len == 0)) {
-//          locnbr->nscount++;
-//          PRINTF("PROBE: NS %u\n", locnbr->nscount);
-//          uip_nd6_ns_output(NULL, &locnbr->ipaddr, &locnbr->ipaddr);
-//          stimer_set(&locnbr->sendns, uip_ds6_if.retrans_timer / 1000);
-//        }
-//        break;
-//      default:
-//        break;
-//      }
-//    }
-//  }
+  /* Periodic processing on unicast addresses */
+  for(locaddr = uip_ds6_if.addr_list;
+      locaddr < uip_ds6_if.addr_list + UIP_DS6_ADDR_NB; locaddr++) {
+    if(locaddr->isused) {
+      if((!locaddr->isinfinite) && (stimer_expired(&locaddr->vlifetime))) {
+        uip_ds6_addr_rm(locaddr);
+#if UIP_ND6_DEF_MAXDADNS > 0
+      } else if((locaddr->state == ADDR_TENTATIVE)
+                && (locaddr->dadnscount <= uip_ds6_if.maxdadns)
+                && (timer_expired(&locaddr->dadtimer))
+                && (uip_len == 0)) {
+        uip_ds6_dad(locaddr);
+#endif /* UIP_ND6_DEF_MAXDADNS > 0 */
+      }
+    }
+  }
 
-//#if UIP_CONF_ROUTER & UIP_ND6_SEND_RA
-//  /* Periodic RA sending */
-//  if(stimer_expired(&uip_ds6_timer_ra) && (uip_len == 0)) {
-//    uip_ds6_send_ra_periodic();
-//  }
-//#endif /* UIP_CONF_ROUTER & UIP_ND6_SEND_RA */
-//  etimer_reset(&uip_ds6_timer_periodic);
+  /* Periodic processing on default routers */
+  uip_ds6_defrt_periodic();
+  /*  for(locdefrt = uip_ds6_defrt_list;
+      locdefrt < uip_ds6_defrt_list + UIP_DS6_DEFRT_NB; locdefrt++) {
+    if((locdefrt->isused) && (!locdefrt->isinfinite) &&
+       (stimer_expired(&(locdefrt->lifetime)))) {
+      uip_ds6_defrt_rm(locdefrt);
+    }
+    }*/
+
+#if !UIP_CONF_ROUTER
+  /* Periodic processing on prefixes */
+  for(locprefix = uip_ds6_prefix_list;
+      locprefix < uip_ds6_prefix_list + UIP_DS6_PREFIX_NB;
+      locprefix++) {
+    if(locprefix->isused && !locprefix->isinfinite
+       && stimer_expired(&(locprefix->vlifetime))) {
+      uip_ds6_prefix_rm(locprefix);
+    }
+  }
+#endif /* !UIP_CONF_ROUTER */
+
+  /* Periodic processing on neighbors */
+  for(locnbr = uip_ds6_nbr_cache;
+      locnbr < uip_ds6_nbr_cache + UIP_DS6_NBR_NB;
+      locnbr++) {
+    if(locnbr->isused) {
+      switch(locnbr->state) {
+      case NBR_INCOMPLETE:
+        if(locnbr->nscount >= UIP_ND6_MAX_MULTICAST_SOLICIT) {
+          uip_ds6_nbr_rm(locnbr);
+        } else if(stimer_expired(&locnbr->sendns) && (uip_len == 0)) {
+          locnbr->nscount++;
+          PRINTF("NBR_INCOMPLETE: NS %u\n", locnbr->nscount);
+          uip_nd6_ns_output(NULL, NULL, &locnbr->ipaddr);
+          stimer_set(&locnbr->sendns, uip_ds6_if.retrans_timer / 1000);
+        }
+        break;
+      case NBR_REACHABLE:
+        if(stimer_expired(&locnbr->reachable)) {
+          PRINTF("REACHABLE: moving to STALE (");
+          PRINT6ADDR(&locnbr->ipaddr);
+          PRINTF(")\n");
+          locnbr->state = NBR_STALE;
+        }
+        break;
+      case NBR_DELAY:
+        if(stimer_expired(&locnbr->reachable)) {
+          locnbr->state = NBR_PROBE;
+          locnbr->nscount = 0;
+          PRINTF("DELAY: moving to PROBE\n");
+          stimer_set(&locnbr->sendns, 0);
+        }
+        break;
+      case NBR_PROBE:
+        if(locnbr->nscount >= UIP_ND6_MAX_UNICAST_SOLICIT) {
+          PRINTF("PROBE END\n");
+          if((locdefrt = uip_ds6_defrt_lookup(&locnbr->ipaddr)) != NULL) {
+            if (!locdefrt->isinfinite) {
+              uip_ds6_defrt_rm(locdefrt);
+            }
+          }
+          uip_ds6_nbr_rm(locnbr);
+        } else if(stimer_expired(&locnbr->sendns) && (uip_len == 0)) {
+          locnbr->nscount++;
+          PRINTF("PROBE: NS %u\n", locnbr->nscount);
+          uip_nd6_ns_output(NULL, &locnbr->ipaddr, &locnbr->ipaddr);
+          stimer_set(&locnbr->sendns, uip_ds6_if.retrans_timer / 1000);
+        }
+        break;
+      default:
+        break;
+      }
+    }
+  }
+
+#if UIP_CONF_ROUTER & UIP_ND6_SEND_RA
+  /* Periodic RA sending */
+  if(stimer_expired(&uip_ds6_timer_ra) && (uip_len == 0)) {
+    uip_ds6_send_ra_periodic();
+  }
+#endif /* UIP_CONF_ROUTER & UIP_ND6_SEND_RA */
+  etimer_reset(&uip_ds6_timer_periodic);
   return;
 }
 
@@ -316,8 +317,8 @@ uip_ds6_nbr_add(uip_ipaddr_t *ipaddr, uip_lladdr_t *lladdr,
     uip_packetqueue_new(&locnbr->packethandle);
 #endif /* UIP_CONF_IPV6_QUEUE_PKT */
     /* timers are set separately, for now we put them in expired state */
-//    stimer_set(&locnbr->reachable, 0);
-//    stimer_set(&locnbr->sendns, 0);
+    stimer_set(&locnbr->reachable, 0);
+    stimer_set(&locnbr->sendns, 0);
     locnbr->nscount = 0;
     PRINTF("Adding neighbor with ip addr ");
     PRINT6ADDR(ipaddr);

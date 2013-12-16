@@ -671,33 +671,32 @@ tcpip_ipv6_output(void)
           uip_nd6_ns_output(NULL, NULL, &nbr->ipaddr);
         }
 
-//        stimer_set(&nbr->sendns, uip_ds6_if.retrans_timer / 1000);
+        stimer_set(&nbr->sendns, uip_ds6_if.retrans_timer / 1000);
         nbr->nscount = 1;
       }
     } else {
-//      if(nbr->state == NBR_INCOMPLETE) {
-//        PRINTF("tcpip_ipv6_output: nbr cache entry incomplete\n");
-//#if UIP_CONF_IPV6_QUEUE_PKT
-//        /* Copy outgoing pkt in the queuing buffer for later transmit and set
-//           the destination nbr to nbr. */
-//        if(uip_packetqueue_alloc(&nbr->packethandle, UIP_DS6_NBR_PACKET_LIFETIME) != NULL) {
-//          memcpy(uip_packetqueue_buf(&nbr->packethandle), UIP_IP_BUF, uip_len);
-//          uip_packetqueue_set_buflen(&nbr->packethandle, uip_len);
-//        }
-//#endif /*UIP_CONF_IPV6_QUEUE_PKT*/
-//        uip_len = 0;
-//        return;
-//      }
+      if(nbr->state == NBR_INCOMPLETE) {
+        PRINTF("tcpip_ipv6_output: nbr cache entry incomplete\n");
+#if UIP_CONF_IPV6_QUEUE_PKT
+        /* Copy outgoing pkt in the queuing buffer for later transmit and set
+           the destination nbr to nbr. */
+        if(uip_packetqueue_alloc(&nbr->packethandle, UIP_DS6_NBR_PACKET_LIFETIME) != NULL) {
+          memcpy(uip_packetqueue_buf(&nbr->packethandle), UIP_IP_BUF, uip_len);
+          uip_packetqueue_set_buflen(&nbr->packethandle, uip_len);
+        }
+#endif /*UIP_CONF_IPV6_QUEUE_PKT*/
+        uip_len = 0;
+        return;
+      }
       /* Send in parallel if we are running NUD (nbc state is either STALE,
          DELAY, or PROBE). See RFC 4861, section 7.7.3 on node behavior. */
       if(nbr->state == NBR_STALE) {
         nbr->state = NBR_DELAY;
-//        stimer_set(&nbr->reachable, UIP_ND6_DELAY_FIRST_PROBE_TIME);
+        stimer_set(&nbr->reachable, UIP_ND6_DELAY_FIRST_PROBE_TIME);
         nbr->nscount = 0;
         PRINTF("tcpip_ipv6_output: nbr cache entry stale moving to delay\n");
       }
 
-//      stimer_set(&nbr->sendns, uip_ds6_if.retrans_timer / 1000);
       tcpip_output(&nbr->lladdr);
 
 #if UIP_CONF_IPV6_QUEUE_PKT
