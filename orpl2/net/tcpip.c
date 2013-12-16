@@ -43,7 +43,7 @@
 #include "net/uip-split.h"
 #include "net/uip-packetqueue.h"
 
-#include "tools/bloom.h"
+#include "bloom.h"
 extern double_bf dbf;
 
 #if UIP_CONF_IPV6

@@ -5,8 +5,8 @@
 #include "net/netstack.h"
 #include "net/mac/frame802154.h"
 #include "net/uip-ds6.h"
-#include "tools/rpl-tools.h"
-#include "tools/bloom.h"
+#include "rpl-tools.h"
+#include "bloom.h"
 
 extern double_bf dbf;
 

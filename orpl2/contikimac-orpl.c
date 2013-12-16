@@ -53,7 +53,7 @@
 #include "anycast.h"
 #include "net/neighbor-info.h"
 #include "node-id.h"
-#include "tools/rpl-tools.h"
+#include "rpl-tools.h"
 
 #include <string.h>
 

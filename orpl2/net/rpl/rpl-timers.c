@@ -43,8 +43,8 @@
 #include "net/rpl/rpl-private.h"
 #include "lib/random.h"
 #include "sys/ctimer.h"
-#include "tools/rpl-tools.h"
-#include "tools/anycast.h"
+#include "rpl-tools.h"
+#include "anycast.h"
 
 #define DEBUG DEBUG_NONE
 #include "net/uip-debug.h"
@@ -148,7 +148,6 @@ handle_dio_timer(void *ptr)
 #if RPL_CONF_STATS
       instance->dio_totsend++;
 #endif /* RPL_CONF_STATS */
-      curr_dio_interval = instance->dio_intcurrent;
       dio_output(instance, NULL);
       anycast_trickle_callback(instance);
     } else {

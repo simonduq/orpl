@@ -1,14 +1,14 @@
 #include "contiki.h"
 #include "net/rpl/rpl.h"
+#include "net/rpl/rpl-private.h"
 #include "net/packetbuf.h"
-#include "tools/rpl-tools.h"
+#include "rpl-tools.h"
 
 uip_ipaddr_t my_ipaddr;
 uip_ipaddr_t prefix;
 
 int forwarder_set_size = 0;
 int neighbor_set_size = 0;
-int curr_dio_interval;
 uint16_t rank = 0xffff;
 
 rtimer_clock_t start_time;
@@ -29,6 +29,7 @@ void app_data_init(struct app_data *dst, struct app_data *src) {
 void rpl_log(struct app_data *dataptr) {
 
   struct app_data data;
+  int curr_dio_interval = default_instance->dio_intcurrent;
 
   if(dataptr) {
     app_data_init(&data, dataptr);

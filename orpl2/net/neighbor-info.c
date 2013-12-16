@@ -41,7 +41,7 @@
 #include "net/uip-ds6.h"
 #include "net/uip-nd6.h"
 #include "anycast.h"
-#include "tools/anycast.h"
+#include "anycast.h"
 #include "node-id.h"
 
 #define DEBUG DEBUG_NONE
