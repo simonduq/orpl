@@ -160,8 +160,8 @@ typedef struct uip_ds6_nbr {
   uint8_t isused;
   uip_ipaddr_t ipaddr;
   uip_lladdr_t lladdr;
-//  struct stimer reachable;
-//  struct stimer sendns;
+  struct stimer reachable;
+  struct stimer sendns;
   clock_time_t last_lookup;
   uint8_t nscount;
   uint8_t in_routing_table;
