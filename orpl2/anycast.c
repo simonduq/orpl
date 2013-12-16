@@ -391,7 +391,7 @@ void bloom_request_broadcast() {
 }
 
 void
-anycast_trickle_callback(rpl_instance_t *instance) {
+orpl_trickle_callback(rpl_instance_t *instance) {
   rpl_trace_null("Anycast: trickle callback");
   curr_instance = instance;
   curr_dag = instance ? instance->current_dag : NULL;

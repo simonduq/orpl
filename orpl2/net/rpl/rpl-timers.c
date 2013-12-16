@@ -43,8 +43,9 @@
 #include "net/rpl/rpl-private.h"
 #include "lib/random.h"
 #include "sys/ctimer.h"
-#include "rpl-tools.h"
+#if WITH_ORPL
 #include "anycast.h"
+#endif /* WITH_ORPL */
 
 #define DEBUG DEBUG_NONE
 #include "net/uip-debug.h"
@@ -65,6 +66,10 @@ static uint8_t dio_send_ok;
 static void
 handle_periodic_timer(void *ptr)
 {
+#if WITH_ORPL /* ORPL doesn't need to purge routes nor send DIS.
+We just update EDC periodically */
+  update_e2e_edc(0);
+#else /* WITH_ORPL */
   rpl_purge_routes();
   rpl_recalculate_ranks();
 
@@ -77,6 +82,7 @@ handle_periodic_timer(void *ptr)
   }
 #endif
   ctimer_reset(&periodic_timer);
+#endif /* WITH_ORPL */
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -149,7 +155,9 @@ handle_dio_timer(void *ptr)
       instance->dio_totsend++;
 #endif /* RPL_CONF_STATS */
       dio_output(instance, NULL);
-      anycast_trickle_callback(instance);
+#if WITH_ORPL
+      orpl_trickle_callback(instance);
+#endif /* WITH_ORPL */
     } else {
       PRINTF("RPL: Supressing DIO transmission (%d >= %d)\n",
              instance->dio_counter, instance->dio_redundancy);

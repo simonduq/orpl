@@ -19,7 +19,6 @@ PROCESS_THREAD(simple_energest_process, ev, data)
     PROCESS_WAIT_UNTIL(etimer_expired(&periodic));
     etimer_reset(&periodic);
     simple_energest_step();
-    update_e2e_edc(0);
   }
 
   PROCESS_END();

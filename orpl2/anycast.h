@@ -38,7 +38,7 @@ void update_e2e_edc();
 int is_in_subdodag(uip_ipaddr_t *ipv6);
 int is_reachable_neighbor(uip_ipaddr_t *ipv6);
 void anycast_set_packetbuf_addr();
-void anycast_trickle_callback(rpl_instance_t *instance);
+void orpl_trickle_callback(rpl_instance_t *instance);
 void broadcast_acked(const rimeaddr_t *receiver);
 void broadcast_done();
 void bloom_broacast_failed();
