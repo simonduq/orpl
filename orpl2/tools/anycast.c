@@ -19,58 +19,6 @@
 #include "random.h"
 #include "net/rpl/rpl-private.h"
 
-#define WITH_RPL_TRACE 1
-
-void rpl_trace(const char *format , ...)
-{
-#if WITH_RPL_TRACE
-  va_list arglist;
-  va_start(arglist, format);
-  vprintf(format, arglist);
-  va_end(arglist);
-#endif /* WITH_RPL_TRACE */
-}
-
-void rpl_trace_generic(const char *format, va_list arglist, struct app_data *dataptr)
-{
-#if WITH_RPL_TRACE
-  vprintf(format, arglist);
-  rpl_log(dataptr);
-#endif /* WITH_RPL_TRACE */
-}
-
-void rpl_trace_from_packetbuf(const char *format , ...)
-{
-  va_list arglist;
-  va_start(arglist, format);
-  rpl_trace_generic(format, arglist, rpl_dataptr_from_packetbuf());
-  va_end(arglist);
-}
-
-void rpl_trace_from_uip(const char *format, ...)
-{
-  va_list arglist;
-  va_start(arglist, format);
-  rpl_trace_generic(format, arglist, rpl_dataptr_from_uip());
-  va_end(arglist);
-}
-
-void rpl_trace_null(const char *format , ...)
-{
-  va_list arglist;
-  va_start(arglist, format);
-  rpl_trace_generic(format, arglist, NULL);
-  va_end(arglist);
-}
-
-void rpl_trace_from_dataptr(const struct app_data *dataptr, const char *format , ...)
-{
-  va_list arglist;
-  va_start(arglist, format);
-  rpl_trace_generic(format, arglist, dataptr);
-  va_end(arglist);
-}
-
 #if IN_COOJA
 #define TEST_FALSE_POSITIVES 1
 #else

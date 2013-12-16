@@ -38,5 +38,10 @@ extern int curr_dio_interval;
 extern uint16_t rank;
 extern rtimer_clock_t start_time;
 
-#endif
+#define rpl_trace(...) printf(__VA_ARGS__)
+#define rpl_trace_from_dataptr(appdataptr, ...) { printf(__VA_ARGS__); rpl_log(appdataptr); }
+#define rpl_trace_null(...) rpl_trace_from_dataptr(NULL, __VA_ARGS__)
+#define rpl_trace_from_uip(...) rpl_trace_from_dataptr(rpl_dataptr_from_uip(), __VA_ARGS__)
+#define rpl_trace_from_packetbuf(...) rpl_trace_from_dataptr(rpl_dataptr_from_packetbuf(), __VA_ARGS__)
 
+#endif

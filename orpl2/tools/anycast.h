@@ -49,10 +49,7 @@ int acked_down_contains(uint32_t seqno, uint16_t id);
 void received_noip();
 void anycast_update_neighbor_edc(const rimeaddr_t *neighbor_addr, uint16_t neighbor_rank);
 void anycast_init(int is_sink);
-void rpl_trace_null(const char *format, ...);
-void rpl_trace_from_packetbuf(const char *format, ...);
-void rpl_trace_from_uip(const char *format, ...);
-void rpl_trace_from_dataptr(const struct app_data *, const char *format, ...);
-void rpl_trace(const char *format , ...);
+void softack_acked_callback(const uint8_t *buf, uint8_t len);
+void softack_input_callback(const uint8_t *buf, uint8_t len, uint8_t **ackbufptr, uint8_t *acklen);
 
 #endif
