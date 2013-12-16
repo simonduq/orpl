@@ -905,7 +905,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
 				  				  node_id_from_rimeaddr(dest),
 				  				  strobe_duration,
 				  				  collision_count, seqno);
-		  //TODO: don't use dataptr (r seqno)
+		  //TODO ORPL: don't use dataptr (r seqno)
 		  struct app_data *dataptr = rpl_dataptr_from_packetbuf();
 		  if(dataptr && !packetbuf_attr(PACKETBUF_ATTR_GOING_UP)) {
 			  struct app_data data;
@@ -1059,7 +1059,7 @@ input_packet(void)
 
       struct app_data *dataptr = NULL;
       if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
-        //TODO: don't use dataptr (r seqno, rw hop)
+        //TODO ORPL: don't use dataptr (r seqno, rw hop)
         dataptr = rpl_dataptr_from_packetbuf();
       }
       struct app_data data;

@@ -597,7 +597,7 @@ tcpip_ipv6_output(void)
 //      }
 
       /* Set anycast MAC address instead of routing */
-      //TODO: don't use dataptr (r seqno)
+      //TODO ORPL: don't use dataptr (r seqno)
       struct app_data *dataptr = rpl_dataptr_from_uip();
       struct app_data data;
       app_data_init(&data, dataptr);
