@@ -123,7 +123,7 @@ static uip_ipaddr_t ipaddr;
 static uip_ds6_prefix_t *prefix; /**  Pointer to a prefix list entry */
 #endif
 static uip_ds6_nbr_t *nbr; /**  Pointer to a nbr cache entry*/
-//static uip_ds6_defrt_t *defrt; /**  Pointer to a router list entry */
+static uip_ds6_defrt_t *defrt; /**  Pointer to a router list entry */
 static uip_ds6_addr_t *addr; /**  Pointer to an interface address */
 
 
@@ -140,6 +140,7 @@ create_llao(uint8_t *llao, uint8_t type) {
 }
 
 /*------------------------------------------------------------------*/
+
 
 void
 uip_nd6_ns_input(void)
@@ -276,51 +277,53 @@ uip_nd6_ns_input(void)
   }
 
 
-    create_na:
+create_na:
     /* If the node is a router it should set R flag in NAs */
 #if UIP_CONF_ROUTER
     flags = flags | UIP_ND6_NA_FLAG_ROUTER;
 #endif
-    uip_ext_len = 0;
-    UIP_IP_BUF->vtc = 0x60;
-    UIP_IP_BUF->tcflow = 0;
-    UIP_IP_BUF->flow = 0;
-    UIP_IP_BUF->len[0] = 0;       /* length will not be more than 255 */
-    UIP_IP_BUF->len[1] = UIP_ICMPH_LEN + UIP_ND6_NA_LEN + UIP_ND6_OPT_LLAO_LEN;
-    UIP_IP_BUF->proto = UIP_PROTO_ICMP6;
-    UIP_IP_BUF->ttl = UIP_ND6_HOP_LIMIT;
+  uip_ext_len = 0;
+  UIP_IP_BUF->vtc = 0x60;
+  UIP_IP_BUF->tcflow = 0;
+  UIP_IP_BUF->flow = 0;
+  UIP_IP_BUF->len[0] = 0;       /* length will not be more than 255 */
+  UIP_IP_BUF->len[1] = UIP_ICMPH_LEN + UIP_ND6_NA_LEN + UIP_ND6_OPT_LLAO_LEN;
+  UIP_IP_BUF->proto = UIP_PROTO_ICMP6;
+  UIP_IP_BUF->ttl = UIP_ND6_HOP_LIMIT;
 
-    UIP_ICMP_BUF->type = ICMP6_NA;
-    UIP_ICMP_BUF->icode = 0;
+  UIP_ICMP_BUF->type = ICMP6_NA;
+  UIP_ICMP_BUF->icode = 0;
 
-    UIP_ND6_NA_BUF->flagsreserved = flags;
-    memcpy(&UIP_ND6_NA_BUF->tgtipaddr, &addr->ipaddr, sizeof(uip_ipaddr_t));
+  UIP_ND6_NA_BUF->flagsreserved = flags;
+  memcpy(&UIP_ND6_NA_BUF->tgtipaddr, &addr->ipaddr, sizeof(uip_ipaddr_t));
 
-    create_llao(&uip_buf[uip_l2_l3_icmp_hdr_len + UIP_ND6_NA_LEN],
-        UIP_ND6_OPT_TLLAO);
+  create_llao(&uip_buf[uip_l2_l3_icmp_hdr_len + UIP_ND6_NA_LEN],
+              UIP_ND6_OPT_TLLAO);
 
-    UIP_ICMP_BUF->icmpchksum = 0;
-    UIP_ICMP_BUF->icmpchksum = ~uip_icmp6chksum();
+  UIP_ICMP_BUF->icmpchksum = 0;
+  UIP_ICMP_BUF->icmpchksum = ~uip_icmp6chksum();
 
-    uip_len =
-        UIP_IPH_LEN + UIP_ICMPH_LEN + UIP_ND6_NA_LEN + UIP_ND6_OPT_LLAO_LEN;
+  uip_len =
+    UIP_IPH_LEN + UIP_ICMPH_LEN + UIP_ND6_NA_LEN + UIP_ND6_OPT_LLAO_LEN;
 
-    UIP_STAT(++uip_stat.nd6.sent);
-    PRINTF("Sending NA to ");
-    PRINT6ADDR(&UIP_IP_BUF->destipaddr);
-    PRINTF(" from ");
-    PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
-    PRINTF(" with target address ");
-    PRINT6ADDR(&UIP_ND6_NA_BUF->tgtipaddr);
-    PRINTF("\n");
-    return;
+  UIP_STAT(++uip_stat.nd6.sent);
+  PRINTF("Sending NA to ");
+  PRINT6ADDR(&UIP_IP_BUF->destipaddr);
+  PRINTF(" from ");
+  PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
+  PRINTF(" with target address ");
+  PRINT6ADDR(&UIP_ND6_NA_BUF->tgtipaddr);
+  PRINTF("\n");
+  return;
 
-    discard:
-    uip_len = 0;
-    return;
+discard:
+  uip_len = 0;
+  return;
 }
 
 
+
+/*------------------------------------------------------------------*/
 void
 uip_nd6_ns_output(uip_ipaddr_t * src, uip_ipaddr_t * dest, uip_ipaddr_t * tgt) {
 printf("NS\n");
