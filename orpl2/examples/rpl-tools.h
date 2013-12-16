@@ -5,9 +5,6 @@
 
 extern uip_ipaddr_t prefix;
 
-#define EDC_DIVISOR 128
-#define EDC_TICKS_TO_METRIC(edc) (uint16_t)((edc) / (CONTIKIMAC_CONF_CYCLE_TIME / EDC_DIVISOR))
-
 void create_rpl_dag(uip_ipaddr_t *ipaddr);
 uip_ipaddr_t * set_global_address(void);
 void set_addr_iid(uip_ipaddr_t *ipaddr, uint16_t id);

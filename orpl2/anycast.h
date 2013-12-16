@@ -8,6 +8,9 @@
 #include "rpl-tools.h"
 #include "bloom.h"
 
+#define EDC_DIVISOR 128
+#define EDC_TICKS_TO_METRIC(edc) (uint16_t)((edc) / (CONTIKIMAC_CONF_CYCLE_TIME / EDC_DIVISOR))
+
 extern double_bf dbf;
 
 #define EXTRA_ACK_LEN 10
