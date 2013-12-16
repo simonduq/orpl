@@ -47,6 +47,8 @@
 #include "anycast.h"
 #endif /* WITH_ORPL */
 
+#if UIP_CONF_IPV6
+
 #define DEBUG DEBUG_NONE
 #include "net/uip-debug.h"
 
@@ -246,3 +248,4 @@ rpl_schedule_dao(rpl_instance_t *instance)
   }
 }
 /*---------------------------------------------------------------------------*/
+#endif /* UIP_CONF_IPV6 */

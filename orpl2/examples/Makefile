@@ -1,4 +1,5 @@
-CONTIKI=../../contiki
+#CONTIKI=../../contiki
+CONTIKI=/home/user/contiki-2.7
 CONTIKI_PROJECT = app-collect-only
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 TARGET=sky
