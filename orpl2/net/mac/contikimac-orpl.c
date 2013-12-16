@@ -815,7 +815,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
             encounter_time = previous_txtime;
             dest = (rimeaddr_t *)(ackbuf+3);
             uint16_t neighbor_rank = (ackbuf[3+8+1]<<8) + ackbuf[3+8];
-            anycast_update_neighbor_edc(dest, neighbor_rank);
+            orpl_set_neighbor_rank(dest, neighbor_rank);
             broadcast_acked(dest);
           } else {
           /* Received ack for anycast, stop strobing */
@@ -823,7 +823,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
             encounter_time = previous_txtime;
             dest = (rimeaddr_t *)(ackbuf+3);
             uint16_t neighbor_rank = (ackbuf[3+8+1]<<8) + ackbuf[3+8];
-            anycast_update_neighbor_edc(dest, neighbor_rank);
+            orpl_set_neighbor_rank(dest, neighbor_rank);
             if(got_strobe_ack >= 1) break;
           }
         }
@@ -1147,7 +1147,7 @@ input_packet(void)
       if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
         static uint8_t prev_seqno = 0;
         if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) != prev_seqno) {
-          anycast_update_neighbor_edc(packetbuf_addr(PACKETBUF_ADDR_SENDER), packetbuf_attr(PACKETBUF_ATTR_EDC));
+          orpl_set_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER), packetbuf_attr(PACKETBUF_ATTR_EDC));
           prev_seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
         }
       }

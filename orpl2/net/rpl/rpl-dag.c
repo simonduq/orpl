@@ -57,7 +57,9 @@
 
 #include "net/neighbor-info.h"
 
+#if WITH_ORPL
 #include "anycast.h"
+#endif /* WITH_ORPL */
 
 /*---------------------------------------------------------------------------*/
 extern rpl_of_t RPL_OF;
@@ -117,7 +119,6 @@ remove_parents(rpl_dag_t *dag, rpl_rank_t minimum_rank)
     p2 = p->next;
     if(p->rank >= minimum_rank) {
       rpl_remove_parent(dag, p);
-      ANNOTATE("#L %u 0\n", p->addr.u8[sizeof(uip_ipaddr_t) - 1]);
     }
   }
 }
@@ -511,7 +512,6 @@ rpl_add_parent(rpl_dag_t *dag, rpl_dio_t *dio, uip_ipaddr_t *addr)
   p->link_metric = INITIAL_LINK_METRIC;
   memcpy(&p->mc, &dio->mc, sizeof(p->mc));
   list_add(dag->parents, p);
-  ANNOTATE("#L %u 1\n", p->addr.u8[sizeof(uip_ipaddr_t) - 1]);
   return p;
 }
 /*---------------------------------------------------------------------------*/
@@ -571,6 +571,12 @@ rpl_select_dag(rpl_instance_t *instance, rpl_parent_t *p)
   rpl_parent_t *last_parent;
   rpl_dag_t *dag, *end, *best_dag;
   rpl_rank_t old_rank;
+
+#if WITH_ORPL /* This ORPL implementation supports only one DAG,
+and as ORPL doesn't have the concept of preferred parent, we skip
+this whole function */
+  return instance->current_dag;
+#endif /* WITH_ORPL */
 
   old_rank = instance->current_dag->rank;
   last_parent = instance->current_dag->preferred_parent;
@@ -648,7 +654,7 @@ rpl_select_dag(rpl_instance_t *instance, rpl_parent_t *p)
       RPL_LOLLIPOP_INCREMENT(instance->dtsn_out);
       rpl_schedule_dao(instance);
     }
-    //rpl_reset_dio_timer(instance); don't reset DIO for every parent switch
+    rpl_reset_dio_timer(instance);
   } else if(best_dag->rank != old_rank) {
     PRINTF("RPL: Preferred parent update, rank changed from %u to %u\n",
   	(unsigned)old_rank, best_dag->rank);
@@ -687,7 +693,6 @@ rpl_remove_parent(rpl_dag_t *dag, rpl_parent_t *parent)
   PRINTF("RPL: Removing parent ");
   PRINT6ADDR(&parent->addr);
   PRINTF("\n");
-  ANNOTATE("#L %u 0\n", parent->addr.u8[sizeof(uip_ipaddr_t) - 1]);
 
   list_remove(dag->parents, parent);
   memb_free(&parent_memb, parent);
@@ -1098,7 +1103,9 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
   rpl_dag_t *dag, *previous_dag;
   rpl_parent_t *p;
 
-  anycast_update_neighbor_edc(packetbuf_addr(PACKETBUF_ADDR_SENDER), dio->rank);
+#if WITH_ORPL // TODO ORPL: won't be needed once we use rpl_parent->rank instead
+  orpl_set_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER), dio->rank);
+#endif /* WITH_ORPL */
 
   if(dio->mop != RPL_MOP_DEFAULT) {
     PRINTF("RPL: Ignoring a DIO with an unsupported MOP: %d\n", dio->mop);

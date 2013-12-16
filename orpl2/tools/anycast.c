@@ -177,12 +177,27 @@ uint16_t neighbor_attr_get_data_default(struct neighbor_attr *attr, const rimead
 	}
 }
 
+uint16_t
+orpl_get_neighbor_rank(const rimeaddr_t *addr) {
+	return neighbor_attr_get_data_default(&attr_rpl_rank, addr, 0xffff);
+}
+
+void
+orpl_set_neighbor_rank(const rimeaddr_t *neighbor_addr, uint16_t neighbor_rank) {
+  if(node_id_from_rimeaddr(neighbor_addr) != 0) {
+    uint16_t current_rank = orpl_get_neighbor_rank(neighbor_addr);
+    if(current_rank != neighbor_rank) {
+      neighbor_attr_set_data(&attr_rpl_rank, neighbor_addr, &neighbor_rank);
+    }
+  }
+}
+
 void debug_ranks() {
   struct neighbor_addr *n;
   printf("Ackcount: start\n");
   for(n = neighbor_attr_list_neighbors(); n != NULL; n = n->next) {
     uint16_t count = neighbor_attr_get_data_default(&attr_bc_ackcount, &n->addr, 0);
-    uint16_t neighbor_rank = neighbor_attr_get_data_default(&attr_rpl_rank, &n->addr, 0xffff);
+    uint16_t neighbor_rank = orpl_get_neighbor_rank(&n->addr);
     uint16_t neighbor_id = node_id_from_rimeaddr(&n->addr);
     if(neighbor_id == 0) {
       printf("Ackcount: [0] -> ");
@@ -265,10 +280,10 @@ bloom_received(struct bloom_broadcast_s *data)
   uint16_t neighbor_rank = data->rank;
 
   /* EDC: store rank as neighbor attribute, update metric */
-  uint16_t rank_before = neighbor_attr_get_data_default(&attr_rpl_rank, packetbuf_addr(PACKETBUF_ADDR_SENDER), 0xffff);
+  uint16_t rank_before = orpl_get_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER));
   printf("Bloom: received rank from %u %u -> %u (%p)\n", neighbor_id, rank_before, neighbor_rank, data);
 
-  anycast_update_neighbor_edc(packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_rank);
+  orpl_set_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_rank);
   update_e2e_edc(0);
 
   uint16_t count = neighbor_attr_get_data_default(&attr_bc_ackcount, packetbuf_addr(PACKETBUF_ADDR_SENDER), 0xffff);
@@ -310,7 +325,7 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
   if(count == 0xffff) {
     return;
   }
-  uint16_t neighbor_rank = neighbor_attr_get_data_default(&attr_rpl_rank, neighbor_addr, 0xffff);
+  uint16_t neighbor_rank = orpl_get_neighbor_rank(neighbor_addr);
   ANNOTATE("#L %u 0\n", neighbor_id);
   if(neighbor_rank != 0xffff
 #if (ALL_NEIGHBORS_IN_FILTER==0)
@@ -558,7 +573,7 @@ update_e2e_edc(int verbose) {
       curr_min = NULL;
 
       for(n = neighbor_attr_list_neighbors(), index = 0; n != NULL; n = n->next, index++) {
-        uint16_t rank = neighbor_attr_get_data_default(&attr_rpl_rank, &n->addr, 0xffff);
+        uint16_t rank = orpl_get_neighbor_rank(&n->addr);
         uint16_t ackcount = neighbor_attr_get_data_default(&attr_bc_ackcount, &n->addr, 0);
         uint16_t neighbor_id = node_id_from_rimeaddr(&n->addr);
         if(neighbor_id != 0
@@ -655,21 +670,11 @@ anycast_packet_sent() {
   }
 }
 
-
-void anycast_update_neighbor_edc(const rimeaddr_t *neighbor_addr, uint16_t neighbor_rank) {
-  if(node_id_from_rimeaddr(neighbor_addr) != 0) {
-    uint16_t current_rank = neighbor_attr_get_data_default(&attr_rpl_rank, neighbor_addr, 0xffff);
-    if(current_rank != neighbor_rank) {
-      neighbor_attr_set_data(&attr_rpl_rank, neighbor_addr, &neighbor_rank);
-    }
-  }
-}
-
 void
 anycast_packet_received() {
   uint16_t neighbor_edc = packetbuf_attr(PACKETBUF_ATTR_EDC);
   if(neighbor_edc != 0xffff) {
-	  anycast_update_neighbor_edc(packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_edc);
+	  orpl_set_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_edc);
   }
 }
 
@@ -690,24 +695,12 @@ void
 check_neighbors() {
 #if UP_ONLY == 0
   struct neighbor_addr *n;
-//  printf("Ackcount: start\n");
   for(n = neighbor_attr_list_neighbors(); n != NULL; n = n->next) {
-//    uint16_t count = neighbor_attr_get_data_default(&attr_bc_ackcount, &n->addr, 0);
-//    uint16_t neighbor_rank = neighbor_attr_get_data_default(&attr_rpl_rank, &n->addr, 0xffff);
     uint16_t neighbor_id = node_id_from_rimeaddr(&n->addr);
-    if(neighbor_id == 0) {
-//      printf("Ackcount: [0] -> ");
-//      uip_debug_lladdr_print((const uip_lladdr_t *)&n->addr);
-//      printf("\n");
-    } else {
-//      printf("Ackcount: [%u] %u/%lu (%u %u -> %u) ->", neighbor_id, count, broadcast_count, rank, neighbor_rank,
-//          (neighbor_rank != 0xffff && neighbor_rank > rank && test_prr(count, NEIGHBOR_PRR_THRESHOLD))?1:0);
-//      uip_debug_lladdr_print((const uip_lladdr_t *)&n->addr);
-//            printf("\n");
+    if(neighbor_id != 0) {
       anycast_add_neighbor_to_bloom(&n->addr, "broadcast done");
     }
   }
-//  printf("Ackcount: end\n");
 #endif
 }
 
