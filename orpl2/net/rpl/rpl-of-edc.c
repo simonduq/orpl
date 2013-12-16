@@ -44,22 +44,18 @@ reset(rpl_dag_t *sag)
 static void
 parent_state_callback(rpl_parent_t *parent, int known, int edc)
 {
-//  printf("EDC callback %u!\n", edc);
-//  PRINT_MAC(packetbuf_addr(PACKETBUF_ADDR_SENDER));
-//  PRINT_MAC(packetbuf_addr(PACKETBUF_ADDR_RECEIVER));
 }
 
 static rpl_rank_t
 calculate_rank(rpl_parent_t *p, rpl_rank_t base_rank)
 {
-//  rpl_rank_t increment;
   if(base_rank == 0) {
     if(p == NULL) {
       return INFINITE_RANK;
     }
     base_rank = p->rank;
   }
-  return /*base_rank + */e2e_edc;
+  return e2e_edc;
 }
 
 static rpl_dag_t *
@@ -86,9 +82,7 @@ best_parent(rpl_parent_t *p1, rpl_parent_t *p2)
 static void
 update_metric_container(rpl_instance_t *instance)
 {
-//  rpl_path_metric_t path_metric;
   rpl_dag_t *dag;
-//  rpl_parent_t *p;
 
   instance->mc.flags = RPL_DAG_MC_FLAG_P;
   instance->mc.aggr = RPL_DAG_MC_AGGR_ADDITIVE;
@@ -100,11 +94,6 @@ update_metric_container(rpl_instance_t *instance)
     /* We should probably do something here */
     return;
   }
-
-//  for(p = list_head(dag->parents); p != NULL; p = p->next) {
-//    uip_debug_ipaddr_print(&p->addr);
-//    printf(" rank: %u \n", p->rank);
-//  }
 
   instance->mc.type = RPL_DAG_MC_ETX;
   instance->mc.length = sizeof(instance->mc.obj.etx);
