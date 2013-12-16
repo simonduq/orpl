@@ -46,7 +46,6 @@
 #include "net/tcpip.h"
 #include "net/uip-ds6.h"
 #include "net/rpl/rpl-private.h"
-#include "anycast.h"
 
 #define DEBUG DEBUG_NONE
 #include "net/uip-debug.h"
@@ -66,61 +65,67 @@
 int
 rpl_verify_header(int uip_ext_opt_offset)
 {
-//  rpl_instance_t *instance;
-//  int down;
-//  uint8_t sender_closer;
-//
-//  if(UIP_EXT_HDR_OPT_RPL_BUF->opt_len != RPL_HDR_OPT_LEN) {
-//    PRINTF("RPL: Bad header option! (wrong length)\n");
-//    return 1;
-//  }
-//
-//  if(UIP_EXT_HDR_OPT_RPL_BUF->flags & RPL_HDR_OPT_FWD_ERR) {
-//    PRINTF("RPL: Forward error!\n");
-//    /* We should try to repair it, not implemented for the moment */
-//    return 2;
-//  }
-//
-//  instance = rpl_get_instance(UIP_EXT_HDR_OPT_RPL_BUF->instance);
-//  if(instance == NULL) {
-//    PRINTF("RPL: Unknown instance: %u\n",
-//           UIP_EXT_HDR_OPT_RPL_BUF->instance);
-//    return 1;
-//  }
-//
-//  if(!instance->current_dag->joined) {
-//    PRINTF("RPL: No DAG in the instance\n");
-//    return 1;
-//  }
-//
-//  down = 0;
-//  if(UIP_EXT_HDR_OPT_RPL_BUF->flags & RPL_HDR_OPT_DOWN) {
-//    down = 1;
-//  }
-//
-//  sender_closer = UIP_EXT_HDR_OPT_RPL_BUF->senderrank < instance->current_dag->rank;
-//
-//  PRINTF("RPL: Packet going %s, sender closer %d (%d < %d)\n", down == 1 ? "down" : "up",
-//	 sender_closer,
-//	 UIP_EXT_HDR_OPT_RPL_BUF->senderrank,
-//	 instance->current_dag->rank
-//	 );
-//
-//  if((down && !sender_closer) || (!down && sender_closer)) {
-//    PRINTF("RPL: Loop detected - senderrank: %d my-rank: %d sender_closer: %d\n",
-//	   UIP_EXT_HDR_OPT_RPL_BUF->senderrank, instance->current_dag->rank,
-//	   sender_closer);
-//    if(UIP_EXT_HDR_OPT_RPL_BUF->flags & RPL_HDR_OPT_RANK_ERR) {
-//      PRINTF("RPL: Rank error signalled in RPL option!\n");
-//      /* We should try to repair it, not implemented for the moment */
-//      return 3;
-//    }
-//    PRINTF("RPL: Single error tolerated\n");
-//    UIP_EXT_HDR_OPT_RPL_BUF->flags |= RPL_HDR_OPT_RANK_ERR;
-//    return 0;
-//  }
-//
-//  PRINTF("RPL: Rank OK\n");
+#if WITH_ORPL /* TODO ORPL: implement RPL ext header for ORPL instead
+of only relying on anycast address for up/down flag. Reenable ext header
+verification. */
+  return 0;
+#endif /* WITH_ORPL */
+
+  rpl_instance_t *instance;
+  int down;
+  uint8_t sender_closer;
+
+  if(UIP_EXT_HDR_OPT_RPL_BUF->opt_len != RPL_HDR_OPT_LEN) {
+    PRINTF("RPL: Bad header option! (wrong length)\n");
+    return 1;
+  }
+
+  if(UIP_EXT_HDR_OPT_RPL_BUF->flags & RPL_HDR_OPT_FWD_ERR) {
+    PRINTF("RPL: Forward error!\n");
+    /* We should try to repair it, not implemented for the moment */
+    return 2;
+  }
+
+  instance = rpl_get_instance(UIP_EXT_HDR_OPT_RPL_BUF->instance);
+  if(instance == NULL) {
+    PRINTF("RPL: Unknown instance: %u\n",
+           UIP_EXT_HDR_OPT_RPL_BUF->instance);
+    return 1;
+  }
+
+  if(!instance->current_dag->joined) {
+    PRINTF("RPL: No DAG in the instance\n");
+    return 1;
+  }
+
+  down = 0;
+  if(UIP_EXT_HDR_OPT_RPL_BUF->flags & RPL_HDR_OPT_DOWN) {
+    down = 1;
+  }
+
+  sender_closer = UIP_EXT_HDR_OPT_RPL_BUF->senderrank < instance->current_dag->rank;
+
+  PRINTF("RPL: Packet going %s, sender closer %d (%d < %d)\n", down == 1 ? "down" : "up",
+	 sender_closer,
+	 UIP_EXT_HDR_OPT_RPL_BUF->senderrank,
+	 instance->current_dag->rank
+	 );
+
+  if((down && !sender_closer) || (!down && sender_closer)) {
+    PRINTF("RPL: Loop detected - senderrank: %d my-rank: %d sender_closer: %d\n",
+	   UIP_EXT_HDR_OPT_RPL_BUF->senderrank, instance->current_dag->rank,
+	   sender_closer);
+    if(UIP_EXT_HDR_OPT_RPL_BUF->flags & RPL_HDR_OPT_RANK_ERR) {
+      PRINTF("RPL: Rank error signalled in RPL option!\n");
+      /* We should try to repair it, not implemented for the moment */
+      return 3;
+    }
+    PRINTF("RPL: Single error tolerated\n");
+    UIP_EXT_HDR_OPT_RPL_BUF->flags |= RPL_HDR_OPT_RANK_ERR;
+    return 0;
+  }
+
+  PRINTF("RPL: Rank OK\n");
 
   return 0;
 }
@@ -217,7 +222,7 @@ rpl_update_header_empty(void)
 int
 rpl_update_header_final(uip_ipaddr_t *addr)
 {
-//  rpl_parent_t *parent;
+  rpl_parent_t *parent;
   int uip_ext_opt_offset;
   int last_uip_ext_len;
 
@@ -239,8 +244,10 @@ rpl_update_header_final(uip_ipaddr_t *addr)
           PRINTF("RPL: Unable to add hop-by-hop extension header: incorrect default instance\n");
           return 1;
         }
-//        parent = rpl_find_parent(default_instance->current_dag, addr);
-//          UIP_EXT_HDR_OPT_RPL_BUF->flags = RPL_HDR_OPT_DOWN;
+        parent = rpl_find_parent(default_instance->current_dag, addr);
+        if(parent == NULL || parent != parent->dag->preferred_parent) {
+          UIP_EXT_HDR_OPT_RPL_BUF->flags = RPL_HDR_OPT_DOWN;
+        }
         UIP_EXT_HDR_OPT_RPL_BUF->instance = default_instance->instance_id;
         UIP_EXT_HDR_OPT_RPL_BUF->senderrank = default_instance->current_dag->rank;
         uip_ext_len = last_uip_ext_len;
