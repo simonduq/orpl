@@ -81,7 +81,7 @@ create_rpl_dag(uip_ipaddr_t *ipaddr)
 }
 
 /*---------------------------------------------------------------------------*/
-void set_addr_iid(uip_ipaddr_t *ipaddr, uint16_t id) {
+void orpl_set_addr_iid_from_id(uip_ipaddr_t *ipaddr, uint16_t id) {
   ipaddr->u8[8] = ipaddr->u8[10] = ipaddr->u8[12] = ipaddr->u8[14] = id >> 8;
   ipaddr->u8[9] = ipaddr->u8[11] = ipaddr->u8[13] = ipaddr->u8[15] = id;
 }
@@ -89,7 +89,7 @@ void set_addr_iid(uip_ipaddr_t *ipaddr, uint16_t id) {
 /*---------------------------------------------------------------------------*/
 void node_ip6addr(uip_ipaddr_t *ipaddr, uint16_t id) {
   memcpy(ipaddr, &prefix, 8);
-  set_addr_iid(ipaddr, id);
+  orpl_set_addr_iid_from_id(ipaddr, id);
 }
 
 /*---------------------------------------------------------------------------*/

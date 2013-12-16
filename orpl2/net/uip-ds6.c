@@ -47,8 +47,10 @@
 #include "net/uip-nd6.h"
 #include "net/uip-ds6.h"
 #include "net/uip-packetqueue.h"
+#if WITH_ORPL
 #include "node-id.h"
 #include "rpl-tools.h"
+#endif /* WITH_ORPL */
 
 #define DEBUG DEBUG_NONE
 #include "net/uip-debug.h"
@@ -96,7 +98,7 @@ static uip_ds6_maddr_t *locmaddr;
 static uip_ds6_aaddr_t *locaaddr;
 static uip_ds6_prefix_t *locprefix;
 static uip_ds6_nbr_t *locnbr;
-//static uip_ds6_defrt_t *locdefrt;
+static uip_ds6_defrt_t *locdefrt;
 
 /*---------------------------------------------------------------------------*/
 void
@@ -401,7 +403,6 @@ uip_ds6_nbr_ll_lookup(uip_lladdr_t *lladdr)
 }
 
 /*---------------------------------------------------------------------------*/
-
 #if UIP_CONF_ROUTER
 /*---------------------------------------------------------------------------*/
 uip_ds6_prefix_t *
@@ -706,22 +707,25 @@ uip_ds6_select_src(uip_ipaddr_t *src, uip_ipaddr_t *dst)
 void
 uip_ds6_set_addr_iid(uip_ipaddr_t *ipaddr, uip_lladdr_t *lladdr)
 {
-//  /* We consider only links with IEEE EUI-64 identifier or
-//   * IEEE 48-bit MAC addresses */
-//#if (UIP_LLADDR_LEN == 8)
-//  memcpy(ipaddr->u8 + 8, lladdr, UIP_LLADDR_LEN);
-//  ipaddr->u8[8] ^= 0x02;
-//#elif (UIP_LLADDR_LEN == 6)
-//  memcpy(ipaddr->u8 + 8, lladdr, 3);
-//  ipaddr->u8[11] = 0xff;
-//  ipaddr->u8[12] = 0xfe;
-//  memcpy(ipaddr->u8 + 13, (uint8_t *)lladdr + 3, 3);
-//  ipaddr->u8[8] ^= 0x02;
-//#else
-//#error uip-ds6.c cannot build interface address when UIP_LLADDR_LEN is not 6 or 8
-//#endif
+#if !WITH_ORPL
+  /* We consider only links with IEEE EUI-64 identifier or
+   * IEEE 48-bit MAC addresses */
+#if (UIP_LLADDR_LEN == 8)
+  memcpy(ipaddr->u8 + 8, lladdr, UIP_LLADDR_LEN);
+  ipaddr->u8[8] ^= 0x02;
+#elif (UIP_LLADDR_LEN == 6)
+  memcpy(ipaddr->u8 + 8, lladdr, 3);
+  ipaddr->u8[11] = 0xff;
+  ipaddr->u8[12] = 0xfe;
+  memcpy(ipaddr->u8 + 13, (uint8_t *)lladdr + 3, 3);
+  ipaddr->u8[8] ^= 0x02;
+#else
+#error uip-ds6.c cannot build interface address when UIP_LLADDR_LEN is not 6 or 8
+#endif
+#else /* WITH_ORPL */
   uint16_t id = node_id_from_rimeaddr((const rimeaddr_t*)lladdr);
-  set_addr_iid(ipaddr, id);
+  orpl_set_addr_iid_from_id(ipaddr, id);
+#endif /* WITH_ORPL */
 }
 
 /*---------------------------------------------------------------------------*/
