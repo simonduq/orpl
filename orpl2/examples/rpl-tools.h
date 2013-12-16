@@ -28,6 +28,7 @@ void app_data_init(struct app_data *dst, struct app_data *src);
 void update_e2e_edc(int verbose);
 void debug_ranks();
 int time_elapsed();
+void orpl_set_addr_iid_from_id(uip_ipaddr_t *ipaddr, uint16_t id);
 
 extern int forwarder_set_size;
 extern int neighbor_set_size;

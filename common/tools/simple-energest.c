@@ -54,12 +54,13 @@ void simple_energest_step() {
   last_time = curr_time;
 
   uint32_t fraction = (100ul*(delta_tx+delta_rx))/delta_time;
-  rpl_trace_null("Duty Cycle: [%u %u] %8lu +%8lu /%8lu (%lu %%)",
-      node_id,
-      cpt++,
-      delta_tx, delta_rx, delta_time,
-      fraction
+  printf("Duty Cycle: [%u %u] %8lu +%8lu /%8lu (%lu %%)",
+	  node_id,
+	  cpt++,
+	  delta_tx, delta_rx, delta_time,
+	  fraction
   );
+  rpl_trace(NULL);
 
   if(cpt % 8 == 0) {
     debug_ranks();

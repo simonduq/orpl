@@ -286,7 +286,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
         		struct app_data data;
         		app_data_init(&data, dataptr);
         		rpl_trace_from_packetbuf("Csma:! triggering false positive recovery %u after %d tx, %d c.", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
-        		free_first_packet(n);
+        		free_packet(n, q);
         		/* GIve another try, upwards this time, after inserting in blacklist. */
         		blacklist_insert(data.seqno);
         		dataptr->fpcount += 1; /* Increment false positive count */

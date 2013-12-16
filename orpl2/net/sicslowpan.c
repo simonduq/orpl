@@ -1495,7 +1495,8 @@ output(uip_lladdr_t *localdest)
   framer_hdrlen = 21;
 #endif /* USE_FRAMER_HDRLEN */
 
-  if((int)uip_len - (int)uncomp_hdr_len > (int)MAC_MAX_PAYLOAD - framer_hdrlen - (int)rime_hdr_len) {
+  //if((int)uip_len - (int)uncomp_hdr_len > (int)MAC_MAX_PAYLOAD - framer_hdrlen - (int)rime_hdr_len) {
+  if(uip_len - uncomp_hdr_len > MAC_MAX_PAYLOAD - rime_hdr_len) { // TODO ORPL: check this
 #if SICSLOWPAN_CONF_FRAG
     struct queuebuf *q;
     /*

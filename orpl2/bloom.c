@@ -2,6 +2,7 @@
 #include "net/uip.h"
 #include "bloom.h"
 #include "node-id.h"
+#include <string.h>
 
 #if OMNISCIENT_BLOOM
 static uint16_t curr_hash;

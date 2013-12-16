@@ -32,6 +32,8 @@
 #ifndef __DEPLOYMENT_H__
 #define __DEPLOYMENT_H__
 
+#include <stdio.h>
+
 #define DEPLOYMENT_COOJA        1
 #define DEPLOYMENT_MOTES        2
 #define DEPLOYMENT_TWIST        3

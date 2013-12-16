@@ -24,6 +24,7 @@
 
 #include "simple-udp.h"
 #include "rpl-tools.h"
+#include "cc2420.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -53,16 +54,6 @@ receiver(struct simple_udp_connection *c,
 {
   rpl_trace_from_dataptr((struct app_data *)data, "App: received");
 }
-/*---------------------------------------------------------------------------*/
-void update_annotations() {
-  int i;
-  int count = 0;
-  if(e2e_edc != 0xffff) {
-	ANNOTATE("#A rank=%u.%u\n", e2e_edc/EDC_DIVISOR,
-	       (10 * (e2e_edc % EDC_DIVISOR)) / EDC_DIVISOR);
-  }
-}
-
 /*---------------------------------------------------------------------------*/
 void app_send_to(uint16_t id) {
 

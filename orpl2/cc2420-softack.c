@@ -52,7 +52,6 @@
 #include "anycast.h"
 #include "node-id.h"
 #include "lib/memb.h"
-#include "net/neighbor-info.h"
 
 #include "sys/timetable.h"
 

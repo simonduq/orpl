@@ -34,6 +34,7 @@ int time_elapsed();
 
 extern int forwarder_set_size;
 extern int neighbor_set_size;
+extern int curr_dio_interval;
 extern uint16_t rank;
 extern rtimer_clock_t start_time;
 

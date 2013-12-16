@@ -3,6 +3,8 @@
 #include "net/rpl/rpl-private.h"
 #include "net/packetbuf.h"
 #include "rpl-tools.h"
+#include <stdio.h>
+#include <string.h>
 
 uip_ipaddr_t my_ipaddr;
 uip_ipaddr_t prefix;

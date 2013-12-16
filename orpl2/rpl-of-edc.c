@@ -1,12 +1,11 @@
 #include "net/rpl/rpl-private.h"
-#include "net/neighbor-info.h"
 
 #define DEBUG DEBUG_NONE
 #include "net/uip-debug.h"
 #include "anycast.h"
 
 static void reset(rpl_dag_t *);
-static void parent_state_callback(rpl_parent_t *, int, int);
+static void neighbor_link_callback(rpl_parent_t *, int, int);
 static rpl_parent_t *best_parent(rpl_parent_t *, rpl_parent_t *);
 static rpl_dag_t *best_dag(rpl_dag_t *, rpl_dag_t *);
 static rpl_rank_t calculate_rank(rpl_parent_t *, rpl_rank_t);
@@ -14,7 +13,7 @@ static void update_metric_container(rpl_instance_t *);
 
 rpl_of_t rpl_of_edc = {
   reset,
-  parent_state_callback,
+  neighbor_link_callback,
   best_parent,
   best_dag,
   calculate_rank,
@@ -42,8 +41,9 @@ reset(rpl_dag_t *sag)
 }
 
 static void
-parent_state_callback(rpl_parent_t *parent, int known, int edc)
+neighbor_link_callback(rpl_parent_t *parent, int known, int edc)
 {
+	anycast_packet_sent();
 }
 
 static rpl_rank_t
@@ -95,7 +95,7 @@ update_metric_container(rpl_instance_t *instance)
     return;
   }
 
-  instance->mc.type = RPL_DAG_MC_ETX;
+  instance->mc.type = RPL_DAG_MC;
   instance->mc.length = sizeof(instance->mc.obj.etx);
   instance->mc.obj.etx = e2e_edc;
 

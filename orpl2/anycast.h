@@ -50,7 +50,6 @@ int blacklist_contains(uint32_t seqno);
 void acked_down_insert(uint32_t seqno, uint16_t id);
 int acked_down_contains(uint32_t seqno, uint16_t id);
 void received_noip();
-void orpl_set_neighbor_rank(const rimeaddr_t *neighbor_addr, uint16_t neighbor_rank);
 void anycast_init(int is_sink);
 void softack_acked_callback(const uint8_t *buf, uint8_t len);
 void softack_input_callback(const uint8_t *buf, uint8_t len, uint8_t **ackbufptr, uint8_t *acklen);

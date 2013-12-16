@@ -63,6 +63,7 @@ static rpl_of_t * const objective_functions[] = {&RPL_OF};
 
 #if WITH_ORPL
 #include "anycast.h"
+#include "net/packetbuf.h"
 #endif /* WITH_ORPL */
 
 /*---------------------------------------------------------------------------*/
@@ -76,7 +77,7 @@ static rpl_of_t * const objective_functions[] = {&RPL_OF};
 
 /*---------------------------------------------------------------------------*/
 /* Per-parent RPL information */
-NBR_TABLE(rpl_parent_t, rpl_parents);
+NBR_TABLE_GLOBAL(rpl_parent_t, rpl_parents);
 /*---------------------------------------------------------------------------*/
 /* Allocate instance table. */
 rpl_instance_t instance_table[RPL_MAX_INSTANCES];
@@ -95,7 +96,56 @@ rpl_get_parent_rank(uip_lladdr_t *addr)
   if(p != NULL) {
     return p->rank;
   } else {
+    return (rpl_rank_t)-1;
+  }
+}
+/*---------------------------------------------------------------------------*/
+void
+rpl_set_parent_rank(uip_lladdr_t *addr, rpl_rank_t rank)
+{
+  rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
+  if(p != NULL) {
+    p->rank = rank;
+  }
+}
+/*---------------------------------------------------------------------------*/
+uint16_t
+rpl_get_parent_ac_ackcount(uip_lladdr_t *addr)
+{
+  rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
+  if(p != NULL) {
+    return p->ac_ackcount;
+  } else {
     return 0;
+  }
+}
+/*---------------------------------------------------------------------------*/
+void
+rpl_set_parent_ac_ackcount(uip_lladdr_t *addr, uint16_t ac_ackcount)
+{
+  rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
+  if(p != NULL) {
+    p->ac_ackcount = ac_ackcount;
+  }
+}
+/*---------------------------------------------------------------------------*/
+uint16_t
+rpl_get_parent_bc_ackcount(uip_lladdr_t *addr)
+{
+  rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
+  if(p != NULL) {
+    return p->bc_ackcount;
+  } else {
+    return 0;
+  }
+}
+/*---------------------------------------------------------------------------*/
+void
+rpl_set_parent_bc_ackcount(uip_lladdr_t *addr, uint16_t bc_ackcount)
+{
+  rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
+  if(p != NULL) {
+    p->bc_ackcount = bc_ackcount;
   }
 }
 /*---------------------------------------------------------------------------*/
@@ -553,6 +603,8 @@ rpl_add_parent(rpl_dag_t *dag, rpl_dio_t *dio, uip_ipaddr_t *addr)
     p->rank = dio->rank;
     p->dtsn = dio->dtsn;
     p->link_metric = RPL_INIT_LINK_METRIC * RPL_DAG_MC_ETX_DIVISOR;
+    p->ac_ackcount = 0;
+    p->bc_ackcount = 0;
 #if RPL_DAG_MC != RPL_DAG_MC_NONE
     memcpy(&p->mc, &dio->mc, sizeof(p->mc));
 #endif /* RPL_DAG_MC != RPL_DAG_MC_NONE */
@@ -1140,7 +1192,7 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
   rpl_parent_t *p;
 
 #if WITH_ORPL // TODO ORPL: won't be needed once we use rpl_parent->rank instead
-  orpl_set_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER), dio->rank);
+  rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), dio->rank);
 #endif /* WITH_ORPL */
 
   if(dio->mop != RPL_MOP_DEFAULT) {

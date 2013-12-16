@@ -61,6 +61,9 @@
 
 /* Other system parameters */
 
+#undef UIP_CONF_ND6_SEND_NA
+#define UIP_CONF_ND6_SEND_NA 0
+
 #undef UIP_CONF_BUFFER_SIZE
 #define UIP_CONF_BUFFER_SIZE    160
 
@@ -149,9 +152,6 @@ typedef uint32_t rtimer_clock_t;
 #define RPL_CONF_OF rpl_of_edc
 
 /* Other system parameters */
-
-#undef WITH_PHASE_OPTIMIZATION
-#define WITH_PHASE_OPTIMIZATION 0
 
 #undef CC2420_CONF_SFD_TIMESTAMPS
 #define CC2420_CONF_SFD_TIMESTAMPS 1

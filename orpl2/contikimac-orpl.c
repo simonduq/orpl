@@ -51,7 +51,6 @@
 #include "sys/pt.h"
 #include "sys/rtimer.h"
 #include "anycast.h"
-#include "net/neighbor-info.h"
 #include "node-id.h"
 #include "rpl-tools.h"
 
@@ -833,7 +832,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
             encounter_time = previous_txtime;
             dest = (rimeaddr_t *)(ackbuf+3);
             uint16_t neighbor_rank = (ackbuf[3+8+1]<<8) + ackbuf[3+8];
-            orpl_set_neighbor_rank(dest, neighbor_rank);
+            rpl_set_parent_rank((uip_lladdr_t *)dest, neighbor_rank);
             broadcast_acked(dest);
           } else {
           /* Received ack for anycast, stop strobing */
@@ -841,7 +840,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
             encounter_time = previous_txtime;
             dest = (rimeaddr_t *)(ackbuf+3);
             uint16_t neighbor_rank = (ackbuf[3+8+1]<<8) + ackbuf[3+8];
-            orpl_set_neighbor_rank(dest, neighbor_rank);
+            rpl_set_parent_rank((uip_lladdr_t *)dest, neighbor_rank);
             if(got_strobe_ack >= 1) break;
           }
         }
@@ -1034,7 +1033,7 @@ input_packet(void)
       packetbuf_set_attr(PACKETBUF_ATTR_EDC, 0xffff);
     }
 
-    neighbor_info_packet_received();
+    rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER), rank);
   }
 
   /*  printf("cycle_start 0x%02x 0x%02x\n", cycle_start, cycle_start % CYCLE_TIME);*/
@@ -1059,7 +1058,7 @@ input_packet(void)
     if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
       static uint8_t prev_seqno = 0;
       if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) != prev_seqno) {
-        orpl_set_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER), packetbuf_attr(PACKETBUF_ATTR_EDC));
+        rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), packetbuf_attr(PACKETBUF_ATTR_EDC));
         prev_seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
       }
     }
