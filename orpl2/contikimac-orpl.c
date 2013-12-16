@@ -1035,6 +1035,14 @@ input_packet(void)
     packetbuf_set_datalen(chdr->len);
 #endif /* WITH_CONTIKIMAC_HEADER */
 
+    if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
+      static uint8_t prev_seqno = 0;
+      if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) != prev_seqno) {
+        orpl_set_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER), packetbuf_attr(PACKETBUF_ATTR_EDC));
+        prev_seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
+      }
+    }
+
     if(packetbuf_datalen() > 0 &&
        packetbuf_totlen() > 0 &&
        (rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
@@ -1144,13 +1152,6 @@ input_packet(void)
       return;
     } else {
       PRINTDEBUG("contikimac: data not for us\n");
-      if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
-        static uint8_t prev_seqno = 0;
-        if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) != prev_seqno) {
-          orpl_set_neighbor_rank(packetbuf_addr(PACKETBUF_ADDR_SENDER), packetbuf_attr(PACKETBUF_ATTR_EDC));
-          prev_seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
-        }
-      }
     }
   } else {
     PRINTF("contikimac: failed to parse (%u)\n", packetbuf_totlen());

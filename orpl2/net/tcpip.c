@@ -39,17 +39,18 @@
  */
 
 #include "contiki-net.h"
-#include "anycast.h"
 #include "net/uip-split.h"
 #include "net/uip-packetqueue.h"
-
-#include "bloom.h"
-extern double_bf dbf;
 
 #if UIP_CONF_IPV6
 #include "net/uip-nd6.h"
 #include "net/uip-ds6.h"
 #endif
+
+#if WITH_ORPL
+#include "anycast.h"
+#include "bloom.h"
+#endif /* WITH_ORPL */
 
 #include <string.h>
 
@@ -209,9 +210,6 @@ packet_input(void)
   }
 #else /* UIP_CONF_IP_FORWARD */
   if(uip_len > 0) {
-    if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
-      anycast_packet_received();
-    }
     check_for_tcp_syn();
     uip_input();
     if(uip_len > 0) {
@@ -546,13 +544,13 @@ tcpip_ipv6_output(void)
 {
   uip_ds6_nbr_t *nbr = NULL;
   uip_ipaddr_t *nexthop = NULL;
+#if WITH_ORPL
   rimeaddr_t *anycast_addr = NULL;
+#endif /* WITH_ORPL */
 
   if(uip_len == 0) {
     return;
   }
-
-//  printf("Tcpip: tcpip_ipv6_output\n");
 
   if(uip_len > UIP_LINK_MTU) {
     UIP_LOG("tcpip_ipv6_output: Packet to big");
@@ -572,30 +570,32 @@ tcpip_ipv6_output(void)
     if(uip_ds6_is_addr_onlink(&UIP_IP_BUF->destipaddr)){
       nexthop = &UIP_IP_BUF->destipaddr;
     } else {
-//      uip_ds6_route_t* locrt;
-//      locrt = uip_ds6_route_lookup(&UIP_IP_BUF->destipaddr);
-//      if(locrt == NULL) {
-//        if((nexthop = uip_ds6_defrt_choose()) == NULL) {
-//#ifdef UIP_FALLBACK_INTERFACE
-//          PRINTF("FALLBACK: removing ext hdrs & setting proto %d %d\n",
-//              uip_ext_len, *((uint8_t *)UIP_IP_BUF + 40));
-//          if(uip_ext_len > 0) {
-//            uint8_t proto = *((uint8_t *)UIP_IP_BUF + 40);
-//            remove_ext_hdr();
-//            /* This should be copied from the ext header... */
-//            UIP_IP_BUF->proto = proto;
-//          }
-//          UIP_FALLBACK_INTERFACE.output();
-//#else
-//          PRINTF("tcpip_ipv6_output: Destination off-link but no route\n");
-//#endif /* !UIP_FALLBACK_INTERFACE */
-//          uip_len = 0;
-//          return;
-//        }
-//      } else {
-//        nexthop = &locrt->nexthop;
-//      }
-
+#if !WITH_ORPL
+      uip_ds6_route_t* locrt;
+      locrt = uip_ds6_route_lookup(&UIP_IP_BUF->destipaddr);
+      if(locrt == NULL) {
+        if((nexthop = uip_ds6_defrt_choose()) == NULL) {
+#ifdef UIP_FALLBACK_INTERFACE
+	  PRINTF("FALLBACK: removing ext hdrs & setting proto %d %d\n", 
+		 uip_ext_len, *((uint8_t *)UIP_IP_BUF + 40));
+	  if(uip_ext_len > 0) {
+	    extern void remove_ext_hdr(void);
+	    uint8_t proto = *((uint8_t *)UIP_IP_BUF + 40);
+	    remove_ext_hdr();
+	    /* This should be copied from the ext header... */
+	    UIP_IP_BUF->proto = proto;
+	  }
+	  UIP_FALLBACK_INTERFACE.output();
+#else
+          PRINTF("tcpip_ipv6_output: Destination off-link but no route\n");
+#endif /* !UIP_FALLBACK_INTERFACE */
+          uip_len = 0;
+          return;
+        }
+      } else {
+        nexthop = &locrt->nexthop;
+      }
+#else /* WITH_ORPL */
       /* Set anycast MAC address instead of routing */
       //TODO ORPL: don't use dataptr (r seqno)
       struct app_data *dataptr = rpl_dataptr_from_uip();
@@ -607,20 +607,38 @@ tcpip_ipv6_output(void)
       } else if(is_in_subdodag(&UIP_IP_BUF->destipaddr) && !blacklist_contains(data.seqno)) {
         rpl_trace_from_uip("Tcpip: fw down");
         anycast_addr = &anycast_addr_down;
-      } else {
+      } else if(e2e_edc != 0){
         rpl_trace_from_uip("Tcpip: fw up");
         anycast_addr = &anycast_addr_up;
+      } else { /* We are the root and need to route upwards =>
+      use fallback interface. */
+#ifdef UIP_FALLBACK_INTERFACE
+    	  PRINTF("FALLBACK: removing ext hdrs & setting proto %d %d\n",
+    			  uip_ext_len, *((uint8_t *)UIP_IP_BUF + 40));
+    	  if(uip_ext_len > 0) {
+    		  uint8_t proto = *((uint8_t *)UIP_IP_BUF + 40);
+    		  remove_ext_hdr();
+    		  /* This should be copied from the ext header... */
+    		  UIP_IP_BUF->proto = proto;
+    	  }
+    	  UIP_FALLBACK_INTERFACE.output();
+#else
+    	  PRINTF("tcpip_ipv6_output: Destination off-link but no route\n");
+#endif /* !UIP_FALLBACK_INTERFACE */
+    	  uip_len = 0;
+    	  return;
       }
+      if(anycast_addr == &anycast_addr_up || anycast_addr == &anycast_addr_down || anycast_addr == &anycast_addr_nbr) {
+    	  tcpip_output((uip_lladdr_t *)anycast_addr);
+    	  uip_len = 0;
+    	  return;
+      }
+#endif /* WITH_ORPL */
 #if TCPIP_CONF_ANNOTATE_TRANSMISSIONS
       if(nexthop != NULL) {
 	printf("#L %u 1; red\n", nexthop->u8[sizeof(uip_ipaddr_t) - 1]);
       }
 #endif /* TCPIP_CONF_ANNOTATE_TRANSMISSIONS */
-    }
-    if(anycast_addr == &anycast_addr_up || anycast_addr == &anycast_addr_down || anycast_addr == &anycast_addr_nbr) {
-      tcpip_output((uip_lladdr_t *)anycast_addr);
-      uip_len = 0;
-      return;
     }
     /* End of next hop determination */
 #if UIP_CONF_IPV6_RPL

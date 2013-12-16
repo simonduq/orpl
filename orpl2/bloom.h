@@ -88,6 +88,8 @@ typedef struct {
   int insert_count_warmup;
 } double_bf;
 
+extern double_bf dbf;
+
 void bloom_init(double_bf *dbf);
 void bloom_insert(double_bf *dbf, unsigned char *ptr, int size);
 void bloom_merge(double_bf *dbf, bloom_filter bf, uint16_t id);
