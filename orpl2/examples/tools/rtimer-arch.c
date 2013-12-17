@@ -32,9 +32,10 @@
 
 /**
  * \file
- *         MSP430-specific rtimer code
+ *         MSP430-specific 32-bit rtimer code
  * \author
  *         Adam Dunkels <adam@sics.se>
+ *         Simon Duquennoy <simonduq@sics.se>
  */
 
 #include "contiki.h"
