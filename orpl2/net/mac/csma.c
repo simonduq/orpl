@@ -55,7 +55,7 @@
 #if WITH_ORPL
 #include "net/uip.h"
 #include "anycast.h"
-#include "rpl-tools.h"
+#include "orpl-log.h"
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 #endif /* WITH_ORPL */
 
@@ -282,15 +282,15 @@ packet_sent(void *ptr, int status, int num_transmissions)
 #if WITH_ORPL && BLOOM_FP_RECOVERY
         	if(!is_edc_root && packetbuf_attr(PACKETBUF_ATTR_GOING_UP) == 0) { /* Failed downwards transmission. Trigger false positive recovery. */
         		//TODO ORPL: don't use dataptr (r seqno, rw fpcount)
-        		struct app_data *dataptr = rpl_dataptr_from_packetbuf();
+        		struct app_data *dataptr = appdataptr_from_packetbuf();
         		struct app_data data;
-        		app_data_init(&data, dataptr);
-        		rpl_trace_from_packetbuf("Csma:! triggering false positive recovery %u after %d tx, %d c.", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
+        		appdata_copy(&data, dataptr);
+        		ORPL_LOG_FROM_PACKETBUF("Csma:! triggering false positive recovery %u after %d tx, %d c.", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
         		free_packet(n, q);
         		/* GIve another try, upwards this time, after inserting in blacklist. */
         		blacklist_insert(data.seqno);
         		dataptr->fpcount += 1; /* Increment false positive count */
-        		rpl_trace_from_packetbuf("Tcpip: false positive recovery %u", dataptr->fpcount);
+        		ORPL_LOG_FROM_PACKETBUF("Tcpip: false positive recovery %u", dataptr->fpcount);
         		packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 0);
         		packetbuf_set_attr(PACKETBUF_ATTR_GOING_UP, 1);
         		packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS, SICSLOWPAN_CONF_MAX_MAC_TRANSMISSIONS);
@@ -299,7 +299,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
         	} else
 #endif /* WITH_ORPL && BLOOM_FP_RECOVERY */
         	{
-        	rpl_trace_from_packetbuf("Csma:! dropping %u after %d tx, %d collisions", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
+        	ORPL_LOG_FROM_PACKETBUF("Csma:! dropping %u after %d tx, %d collisions", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
           PRINTF("csma: drop with status %d after %d transmissions, %d collisions\n",
                  status, n->transmissions, n->collisions);
           free_packet(n, q);
@@ -308,10 +308,10 @@ packet_sent(void *ptr, int status, int num_transmissions)
         }
       } else {
         if(status == MAC_TX_OK) {
-          rpl_trace_from_packetbuf("Csma: success %u after %d tx, %d collisions", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
+          ORPL_LOG_FROM_PACKETBUF("Csma: success %u after %d tx, %d collisions", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
           PRINTF("csma: rexmit ok %d\n", n->transmissions);
         } else {
-          rpl_trace_from_packetbuf("Csma:! dropping due to rexmit failed");
+          ORPL_LOG_FROM_PACKETBUF("Csma:! dropping due to rexmit failed");
           PRINTF("csma: rexmit failed %d: %d\n", n->transmissions, status);
         }
         free_packet(n, q);
@@ -338,7 +338,7 @@ send_packet(mac_callback_t sent, void *ptr)
     if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
     		&rimeaddr_null)) {
 #if WITH_ORPL
-    	rpl_trace("Csma: send broadcast (%u bytes)\n", packetbuf_datalen());
+    	ORPL_LOG("Csma: send broadcast (%u bytes)\n", packetbuf_datalen());
     	if(sending_bloom) {
     		packetbuf_set_attr(PACKETBUF_ATTR_SEND_BLOOM, 1);
     	}
@@ -415,10 +415,10 @@ send_packet(mac_callback_t sent, void *ptr)
       memb_free(&neighbor_memb, n);
     }
     PRINTF("csma: could not allocate packet, dropping packet\n");
-    rpl_trace_from_packetbuf("Csma:! couldn't allocate packet");
+    ORPL_LOG_FROM_PACKETBUF("Csma:! couldn't allocate packet");
   } else {
     PRINTF("csma: could not allocate neighbor, dropping packet\n");
-    rpl_trace_from_packetbuf("Csma:! couldn't allocate neighbor");
+    ORPL_LOG_FROM_PACKETBUF("Csma:! couldn't allocate neighbor");
   }
   mac_call_sent_callback(sent, ptr, MAC_TX_ERR, 1);
 }

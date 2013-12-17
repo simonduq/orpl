@@ -56,7 +56,7 @@ receiver(struct simple_udp_connection *c,
   } else {
     printf("App: received pong");
   }
-  rpl_trace((struct app_data*)dataptr);
+  ORPL_LOG((struct app_data*)dataptr);
   if(data.ping) {
     app_send_to(data.src, 0, data.seqno | 0x8000l);
   }
@@ -80,7 +80,7 @@ void app_send_to(uint16_t id, int ping, uint32_t seqno) {
   } else {
     printf("App: sending pong");
   }
-  rpl_trace(&data);
+  ORPL_LOG(&data);
 
   *((struct app_data*)buf) = data;
   simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &dest_ipaddr);

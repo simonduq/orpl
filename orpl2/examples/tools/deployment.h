@@ -37,6 +37,11 @@
 #ifndef DEPLOYMENT_H
 #define DEPLOYMENT_H
 
+#include "contiki-conf.h"
+#include "sys/node-id.h"
+#include "net/uip.h"
+#include "net/rime/rimeaddr.h"
+
 #define DEPLOYMENT_COOJA        1
 #define DEPLOYMENT_MOTES        2
 #define DEPLOYMENT_TWIST        3
@@ -57,10 +62,7 @@
 #define ROOT_ID 1
 #endif
 
-#include "contiki-conf.h"
-#include "sys/node-id.h"
-#include "net/uip.h"
-#include "net/rime/rimeaddr.h"
+#define APP_PAYLOAD_LEN 64
 
 /* Returns the node's node-id */
 uint16_t get_n_nodes();

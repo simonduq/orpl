@@ -14,7 +14,7 @@
 #include "net/uip-ds6.h"
 #include "bloom.h"
 #include "node-id.h"
-#include "rpl-tools.h"
+#include "orpl-log.h"
 #include "random.h"
 #include "net/rpl/rpl-private.h"
 #include <stdio.h>
@@ -55,6 +55,8 @@
 
 #define BLOOM_MAGIC 0x83d9
 
+int forwarder_set_size = 0;
+int neighbor_set_size = 0;
 static rtimer_clock_t start_time;
 static uip_ipaddr_t prefix;
 
@@ -200,8 +202,8 @@ void debug_ranks() {
       uip_debug_lladdr_print((const uip_lladdr_t *)addr);
       printf("\n");
     } else {
-      printf("Ackcount: [%u] %u/%lu (%u %u -> %u) ->", neighbor_id, count, broadcast_count, rank, neighbor_rank,
-          (neighbor_rank != 0xffff && neighbor_rank > rank && test_prr(count, NEIGHBOR_PRR_THRESHOLD))?1:0);
+      printf("Ackcount: [%u] %u/%lu (%u %u -> %u) ->", neighbor_id, count, broadcast_count, e2e_edc, neighbor_rank,
+          (neighbor_rank != 0xffff && neighbor_rank > e2e_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD))?1:0);
       uip_debug_lladdr_print((const uip_lladdr_t *)addr);
             printf("\n");
     }
@@ -290,16 +292,16 @@ bloom_received(struct bloom_broadcast_s *data)
   if(orpl_up_only == 0) {
     uip_ipaddr_t sender_ipaddr;
     /* Merge Bloom filters */
-    if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > rank && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
+    if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > e2e_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
       int bit_count_before = bloom_count_bits(&dbf);
       if(is_node_addressable(&sender_ipaddr)) {
         bloom_insert(&dbf, (unsigned char*)&sender_ipaddr, 16);
-        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bloom_count_bits(&dbf), "bloom received");
+        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, bloom_count_bits(&dbf), "bloom received");
       }
       bloom_merge(&dbf, ((struct bloom_broadcast_s*)data)->filter, neighbor_id);
       int bit_count_after = bloom_count_bits(&dbf);
-      printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after);
+      printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after);
       if(curr_instance && bit_count_after != bit_count_before) {
         printf("Anycast: reset DIO timer (bloom received)\n");
         //      bit_count_last = bit_count_after;
@@ -322,7 +324,7 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
   uint16_t neighbor_rank = rpl_get_parent_rank_default((uip_lladdr_t *)neighbor_addr, 0xffff);
   if(neighbor_rank != 0xffff
 #if (ALL_NEIGHBORS_IN_FILTER==0)
-      && neighbor_rank > (rank + EDC_W)
+      && neighbor_rank > (e2e_edc + EDC_W)
 #endif
       ) {
     set_ipaddr_from_id(&neighbor_ipaddr, neighbor_id);
@@ -331,7 +333,7 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
         int bit_count_before = bloom_count_bits(&dbf);
         bloom_insert(&dbf, (unsigned char*)&neighbor_ipaddr, 16);
         int bit_count_after = bloom_count_bits(&dbf);
-        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after, message);
+        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after, message);
       }
     }
   }
@@ -355,9 +357,9 @@ void bloom_do_broadcast(void *ptr) {
     ctimer_set(&broadcast_bloom_timer, random_rand() % (32 * CLOCK_SECOND), bloom_do_broadcast, NULL);
   } else {
     /* Broadcast filter */
-    last_broadcasted_rank = rank;
+    last_broadcasted_rank = e2e_edc;
     bloom_broadcast.magic = BLOOM_MAGIC;
-    bloom_broadcast.rank = rank;
+    bloom_broadcast.rank = e2e_edc;
     memcpy(bloom_broadcast.filter, &dbf.filters[dbf.current], sizeof(bloom_filter));
     sending_bloom = 1;
 
@@ -384,7 +386,7 @@ void bloom_request_broadcast() {
 
 void
 orpl_trickle_callback(rpl_instance_t *instance) {
-  rpl_trace_null("Anycast: trickle callback");
+  ORPL_LOG_NULL("Anycast: trickle callback");
   curr_instance = instance;
   curr_dag = instance ? instance->current_dag : NULL;
 
@@ -424,7 +426,7 @@ void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
   is_edc_root = is_root;
   if(is_edc_root) {
 	ANNOTATE("#A color=red\n");
-    rank = e2e_edc = 0;
+    e2e_edc = 0;
   }
   bloom_init(&dbf);
 //  uip_create_linklocal_allnodes_mcast(&bloom_addr);
@@ -439,7 +441,7 @@ void anycast_set_packetbuf_addr() {
   if(rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_up) || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_down)
       || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_nbr) || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_recover)) {
     struct app_data data;
-    app_data_init(&data, rpl_dataptr_from_packetbuf());
+    appdata_copy(&data, appdataptr_from_packetbuf());
     ptr[1] = e2e_edc;
     ptr[2] = data.seqno >> 16;
     ptr[3] = data.seqno;
@@ -617,20 +619,20 @@ update_e2e_edc(int verbose) {
 	update_annotations();
 //    printf("Anycast: updated edc: e2e %u hbh %u fs %u\n", e2e_edc, hbh_edc, forwarder_set_size);
   }
-  rank = e2e_edc;
+
   if(curr_dag) {
-	  curr_dag->rank = rank;
+	  curr_dag->rank = e2e_edc;
   }
 
   /* Reset DIO timer if the rank changed significantly */
   if(curr_instance && last_broadcasted_rank != 0xffff &&
 		  (
-			(last_broadcasted_rank > rank && last_broadcasted_rank - rank > RANK_MAX_CHANGE)
+			(last_broadcasted_rank > e2e_edc && last_broadcasted_rank - e2e_edc > RANK_MAX_CHANGE)
 			||
-			(rank > last_broadcasted_rank && rank - last_broadcasted_rank > RANK_MAX_CHANGE)
+			(e2e_edc > last_broadcasted_rank && e2e_edc - last_broadcasted_rank > RANK_MAX_CHANGE)
 		  )) {
-	  printf("Anycast: reset DIO timer (rank changed from %u to %u)\n", last_broadcasted_rank, rank);
-	  last_broadcasted_rank = rank;
+	  printf("Anycast: reset DIO timer (rank changed from %u to %u)\n", last_broadcasted_rank, e2e_edc);
+	  last_broadcasted_rank = e2e_edc;
 	  rpl_reset_dio_timer(curr_instance);
   }
 
@@ -770,8 +772,8 @@ softack_input_callback(const uint8_t *buf, uint8_t len,
 		/* Append our address to the standard 15.4 ack */
 		rimeaddr_copy((rimeaddr_t*)(ackbuf+3), &rimeaddr_node_addr);
 		/* Append our rank to the ack */
-		ackbuf[3+8] = rank & 0xff;
-		ackbuf[3+8+1] = (rank >> 8)& 0xff;
+		ackbuf[3+8] = e2e_edc & 0xff;
+		ackbuf[3+8+1] = (e2e_edc >> 8)& 0xff;
 	} else {
 		*acklen = 0;
 	}

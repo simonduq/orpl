@@ -52,7 +52,7 @@ receiver(struct simple_udp_connection *c,
          uint16_t datalen)
 {
   printf("App: received");
-  rpl_trace((struct app_data*)data);
+  ORPL_LOG((struct app_data*)data);
 }
 /*---------------------------------------------------------------------------*/
 void app_send_to(uint16_t id) {
@@ -69,7 +69,7 @@ void app_send_to(uint16_t id) {
   node_ip6addr(&dest_ipaddr, id);
 
   printf("App: sending");
-  rpl_trace(&data);
+  ORPL_LOG(&data);
 
   *((struct app_data*)buf) = data;
   simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &dest_ipaddr);

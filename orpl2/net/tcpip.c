@@ -636,17 +636,17 @@ tcpip_ipv6_output(void)
 #else /* WITH_ORPL */
       /* Set anycast MAC address instead of routing */
       //TODO ORPL: don't use dataptr (r seqno)
-      struct app_data *dataptr = rpl_dataptr_from_uip();
+      struct app_data *dataptr = appdataptr_from_uip();
       struct app_data data;
-      app_data_init(&data, dataptr);
+      appdata_copy(&data, dataptr);
       if(is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
-        rpl_trace_from_uip("Tcpip: fw to nbr");
+        ORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;
       } else if(is_in_subdodag(&UIP_IP_BUF->destipaddr) && !blacklist_contains(data.seqno)) {
-        rpl_trace_from_uip("Tcpip: fw down");
+        ORPL_LOG_FROM_UIP("Tcpip: fw down");
         anycast_addr = &anycast_addr_down;
       } else if(e2e_edc != 0){
-        rpl_trace_from_uip("Tcpip: fw up");
+        ORPL_LOG_FROM_UIP("Tcpip: fw up");
         anycast_addr = &anycast_addr_up;
       } else { /* We are the root and need to route upwards =>
       use fallback interface. */

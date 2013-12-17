@@ -5,7 +5,7 @@
 #include "net/netstack.h"
 #include "net/mac/frame802154.h"
 #include "net/uip-ds6.h"
-#include "rpl-tools.h"
+#include "orpl-log.h"
 #include "bloom.h"
 
 #define EDC_DIVISOR 128
@@ -21,6 +21,8 @@ extern double_bf dbf;
 #define FROM_SUBDODAG     8 /* Set if the packet is coming from the sub-dodag (going upwards) */
 #define IS_RECOVERY       16 /* Set if the packet comes from false positive recovery */
 
+extern int forwarder_set_size;
+extern int neighbor_set_size;
 extern rimeaddr_t anycast_addr_up;
 extern rimeaddr_t anycast_addr_down;
 extern rimeaddr_t anycast_addr_nbr;

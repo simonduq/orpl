@@ -38,7 +38,7 @@
 #include "contiki.h"
 #include "node-id.h"
 #include "simple-energest.h"
-#include "rpl-tools.h"
+#include "orpl-log.h"
 
 static uint32_t last_tx, last_rx, last_time;
 static uint32_t delta_tx, delta_rx, delta_time;
@@ -87,7 +87,7 @@ void simple_energest_step() {
   last_time = curr_time;
 
   uint32_t fraction = (100ul*(delta_tx+delta_rx))/delta_time;
-  rpl_trace_null("Duty Cycle: [%u %u] %8lu +%8lu /%8lu (%lu %%)",
+  ORPL_LOG_NULL("Duty Cycle: [%u %u] %8lu +%8lu /%8lu (%lu %%)",
       node_id,
       cpt++,
       delta_tx, delta_rx, delta_time,

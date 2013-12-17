@@ -1404,9 +1404,9 @@ output(uip_lladdr_t *localdest)
 
 #if WITH_ORPL
   //TODO ORPL: don't use dataptr (r fpcount)
-  struct app_data *dataptr = rpl_dataptr_from_uip();
+  struct app_data *dataptr = appdataptr_from_uip();
   struct app_data data;
-  app_data_init(&data, dataptr);
+  appdata_copy(&data, dataptr);
 
   if(data.fpcount == 0) {
      packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,

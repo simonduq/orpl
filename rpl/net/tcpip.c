@@ -582,7 +582,7 @@ tcpip_ipv6_output(void)
 #else
           PRINTF("tcpip_ipv6_output: Destination off-link but no route\n");
           printf("Tcpip: dropping because of no route");
-          rpl_trace(rpl_dataptr_from_uip());
+          ORPL_LOG(appdataptr_from_uip());
 #endif /* !UIP_FALLBACK_INTERFACE */
           uip_len = 0;
           return;
@@ -601,20 +601,20 @@ tcpip_ipv6_output(void)
 #if UIP_CONF_IPV6_RPL
     if(rpl_update_header_final(nexthop)) {
       printf("Tcpip: dropping because of RPL header problem");
-      rpl_trace(rpl_dataptr_from_uip());
+      ORPL_LOG(appdataptr_from_uip());
       uip_len = 0;
       return;
     }
 #endif /* UIP_CONF_IPV6_RPL */
     if((nbr = uip_ds6_nbr_lookup(nexthop)) == NULL) {
       printf("Tcpip: dropping because %u not in neighbor cache", node_id_from_lipaddr(nexthop));
-      rpl_trace(rpl_dataptr_from_uip());
+      ORPL_LOG(appdataptr_from_uip());
       uip_len = 0;
       return;
     } else {
       if(nbr->state == NBR_INCOMPLETE) {
         printf("Tcpip: dropping because neighbor entry is incomplete");
-        rpl_trace(rpl_dataptr_from_uip());
+        ORPL_LOG(appdataptr_from_uip());
         uip_len = 0;
         return;
       }
@@ -628,7 +628,7 @@ tcpip_ipv6_output(void)
       }
 
       printf("Tcpip: fw to %u", node_id_from_rimeaddr((rimeaddr_t*)&nbr->lladdr));
-      rpl_trace(rpl_dataptr_from_uip());
+      ORPL_LOG(appdataptr_from_uip());
 
       tcpip_output(&nbr->lladdr);
 

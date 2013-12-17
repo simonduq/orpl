@@ -63,7 +63,7 @@ receiver(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  rpl_trace_from_dataptr((struct app_data *)data, "App: received");
+  ORPL_LOG_FROM_APPDATAPTR((struct app_data *)data, "App: received");
 }
 /*---------------------------------------------------------------------------*/
 void app_send_to(uint16_t id) {
@@ -80,7 +80,7 @@ void app_send_to(uint16_t id) {
 
   set_ipaddr_from_id(&dest_ipaddr, id);
 
-  rpl_trace_from_dataptr(&data, "App: sending");
+  ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending");
 
   *((struct app_data*)buf) = data;
   simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &dest_ipaddr);
@@ -121,7 +121,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
       etimer_set(&send_timer, random_rand() % (SEND_INTERVAL));
       PROCESS_WAIT_UNTIL(etimer_expired(&send_timer));
 
-      if(rank != 0xffff) {
+      if(e2e_edc != 0xffff) {
         app_send_to(ROOT_ID);
       } else {
         printf("App: not in DODAG\n");
