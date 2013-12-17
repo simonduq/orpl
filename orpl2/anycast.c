@@ -745,18 +745,19 @@ softack_acked_callback(const uint8_t *buf, uint8_t len) {
 void
 softack_input_callback(const uint8_t *buf, uint8_t len,
 	uint8_t **ackbufptr, uint8_t *acklen) {
-	uint8_t fcf, is_data, is_anycast, seqno;
+	uint8_t fcf, is_data, ack_required, seqno;
 	int do_ack = 0;
 
 	fcf = buf[0];
 	is_data = (fcf & 7) == 1;
-	is_anycast = (fcf >> 5) & 1;
+	ack_required = (fcf >> 5) & 1;
 	seqno = buf[2];
 
 	if(is_data) {
-		if(is_anycast) {
+		if(ack_required) {
 			do_ack = frame80254_parse_anycast_irq((uint8_t *)buf, len) & DO_ACK;
-		} else {
+		} else { /* We also ack broadcast, even if we didn't modify the framer
+		and still send them with ack_required unset */
 			if(seqno != last_acked) {
 				do_ack = 1;
 			}
@@ -817,12 +818,14 @@ frame80254_parse_anycast_irq(uint8_t *data, uint8_t len)
     enum anycast_direction_e anycast_direction = direction_none;
     uint16_t neighbor_edc;
     uint32_t seqno;
+    uint8_t src_addr_reverted[8];
+    uint8_t dest_addr_reverted[8];
 
-    uint8_t tmp_src_addr[8];
     for(i=0; i<8; i++) {
-      tmp_src_addr[i] = src_addr[7-i];
+    	src_addr_reverted[i] = src_addr[7-i];
+    	dest_addr_reverted[i] = dest_addr[7-i];
     }
-    uint16_t neighbor_id = node_id_from_rimeaddr((rimeaddr_t*)tmp_src_addr);
+    uint16_t neighbor_id = node_id_from_rimeaddr((rimeaddr_t*)src_addr_reverted);
 
     if(anycast_parse_addr((rimeaddr_t*)dest_addr, &anycast_direction, &neighbor_edc, &seqno)) {
 
@@ -873,6 +876,8 @@ frame80254_parse_anycast_irq(uint8_t *data, uint8_t len)
 
         do_ack = acked_down_contains(seqno, neighbor_id);
       }
+    } else if(rimeaddr_cmp(dest_addr_reverted,&rimeaddr_node_addr)) {
+    	do_ack = 1;
     }
   }
 
