@@ -37,14 +37,16 @@
 
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)
 
-#if (FREEZE_TOPOLOGY && UP_ONLY == 0)
-#if (CMD_CYCLE_TIME >= 1000)
-#define UPDATE_EDC_MAX_TIME 8
-#define UPDATE_BLOOM_MIN_TIME 9
-#else
+#ifndef FREEZE_TOPOLOGY
+#define FREEZE_TOPOLOGY 0
+#endif
+
+#if FREEZE_TOPOLOGY
 #define UPDATE_EDC_MAX_TIME 2
 #define UPDATE_BLOOM_MIN_TIME 3
-#endif
+#else
+#define UPDATE_EDC_MAX_TIME 0
+#define UPDATE_BLOOM_MIN_TIME 0
 #endif
 
 #define ACKED_DOWN_SIZE 32
@@ -52,6 +54,8 @@
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 #define BLOOM_MAGIC 0x83d9
+
+static int orpl_up_only = 0;
 
 struct bloom_broadcast_s {
   uint16_t magic; /* we need a magic number here as this goes straight on top of 15.4 mac
@@ -225,11 +229,11 @@ void debug_ranks() {
 }
 
 int test_prr(uint16_t count, uint16_t threshold) {
-#ifdef UPDATE_BLOOM_MIN_TIME
-  return time_elapsed() > UPDATE_BLOOM_MIN_TIME && broadcast_count >= 4 && (100*count/broadcast_count >= threshold);
-#else
-  return broadcast_count >= 4 && (100*count/broadcast_count >= threshold);
-#endif
+  if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
+    return time_elapsed() > UPDATE_BLOOM_MIN_TIME && broadcast_count >= 4 && (100*count/broadcast_count >= threshold);
+  } else {
+    return broadcast_count >= 4 && (100*count/broadcast_count >= threshold);
+  }
 }
 
 void
@@ -276,29 +280,29 @@ bloom_received(struct bloom_broadcast_s *data)
     return;
   }
 
-#if UP_ONLY == 0
-  uip_ipaddr_t sender_ipaddr;
-  /* Merge Bloom filters */
-  if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > rank && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
-    node_ip6addr(&sender_ipaddr, neighbor_id);
-    int bit_count_before = bloom_count_bits(&dbf);
-    if(is_id_addressable(neighbor_id)) {
-      bloom_insert(&dbf, (unsigned char*)&sender_ipaddr, 16);
-      printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bloom_count_bits(&dbf), "bloom received");
+  if(orpl_up_only == 0) {
+    uip_ipaddr_t sender_ipaddr;
+    /* Merge Bloom filters */
+    if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > rank && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
+      node_ip6addr(&sender_ipaddr, neighbor_id);
+      int bit_count_before = bloom_count_bits(&dbf);
+      if(is_id_addressable(neighbor_id)) {
+        bloom_insert(&dbf, (unsigned char*)&sender_ipaddr, 16);
+        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bloom_count_bits(&dbf), "bloom received");
+      }
+      bloom_merge(&dbf, ((struct bloom_broadcast_s*)data)->filter, neighbor_id);
+      int bit_count_after = bloom_count_bits(&dbf);
+      printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after);
+      if(curr_instance && bit_count_after != bit_count_before) {
+        printf("Anycast: reset DIO timer (bloom received)\n");
+        //      bit_count_last = bit_count_after;
+        //      rpl_reset_dio_timer(curr_instance);
+        bloom_request_broadcast();
+      }
+      bloom_merged_count++;
     }
-    bloom_merge(&dbf, ((struct bloom_broadcast_s*)data)->filter, neighbor_id);
-    int bit_count_after = bloom_count_bits(&dbf);
-    printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after);
-    if(curr_instance && bit_count_after != bit_count_before) {
-      printf("Anycast: reset DIO timer (bloom received)\n");
-//      bit_count_last = bit_count_after;
-      //      rpl_reset_dio_timer(curr_instance);
-      bloom_request_broadcast();
-    }
-    bloom_merged_count++;
+    update_annotations();
   }
-  update_annotations();
-#endif
 }
 
 void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message) {
@@ -338,14 +342,11 @@ bloom_packet_sent(void *ptr, int status, int transmissions)
 }
 
 void bloom_do_broadcast(void *ptr) {
-#ifdef UPDATE_BLOOM_MIN_TIME
-  if(time_elapsed() <= UPDATE_BLOOM_MIN_TIME) {
+  if(FREEZE_TOPOLOGY && orpl_up_only && time_elapsed() <= UPDATE_BLOOM_MIN_TIME) {
     printf("Bloom size %u\n", sizeof(struct bloom_broadcast_s));
     printf("Bloom: requesting broadcast\n");
     ctimer_set(&broadcast_bloom_timer, random_rand() % (32 * CLOCK_SECOND), bloom_do_broadcast, NULL);
-  } else
-#endif
-  {
+  } else {
     /* Broadcast filter */
     last_broadcasted_rank = rank;
     bloom_broadcast.magic = BLOOM_MAGIC;
@@ -380,31 +381,33 @@ orpl_trickle_callback(rpl_instance_t *instance) {
   curr_instance = instance;
   curr_dag = instance ? instance->current_dag : NULL;
 
-#if UP_ONLY == 0
-  check_neighbors();
+  if(orpl_up_only == 0) {
+    check_neighbors();
 
 #if FREEZE_TOPOLOGY == 0
-  /* Bloom filter ageing */
-  printf("Bloom: swapping\n");
-  bloom_swap(&dbf);
+    /* Bloom filter ageing */
+    printf("Bloom: swapping\n");
+    bloom_swap(&dbf);
 #endif
 
-  bloom_request_broadcast();
+    bloom_request_broadcast();
 
-//  int bit_count_current = bloom_count_bits(&dbf);
-//  if(curr_instance && bit_count_current != bit_count_last) {
-//    printf("Anycast: reset DIO timer (trickle callback)\n");
-//    rpl_reset_dio_timer(curr_instance);
-//    bit_count_last = bit_count_current;
-//  }
+    //  int bit_count_current = bloom_count_bits(&dbf);
+    //  if(curr_instance && bit_count_current != bit_count_last) {
+    //    printf("Anycast: reset DIO timer (trickle callback)\n");
+    //    rpl_reset_dio_timer(curr_instance);
+    //    bit_count_last = bit_count_current;
+    //  }
 
-#endif
+  }
 
   update_e2e_edc(1);
   update_annotations();
 }
 
-void anycast_init(int is_sink) {
+void anycast_init(int is_sink, int up_only) {
+
+  orpl_up_only = up_only;
 
   is_edc_root = is_sink;
   if(is_edc_root) {
@@ -524,11 +527,11 @@ add_to_forwarder_set(rpl_parent_t *curr_min, uint16_t curr_min_rank, uint16_t ac
 void
 update_e2e_edc(int verbose) {
 
-#ifdef UPDATE_EDC_MAX_TIME
-  if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
-    return;
+  if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
+    if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
+      return;
+    }
   }
-#endif
 
   static uint16_t prev_e2e_edc;
   prev_e2e_edc = e2e_edc;
@@ -623,11 +626,11 @@ update_e2e_edc(int verbose) {
 void
 anycast_packet_sent() {
 #define ALPHA 9
-#ifdef UPDATE_EDC_MAX_TIME
-  if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
-    return;
+  if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
+    if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
+      return;
+    }
   }
-#endif
   if(packetbuf_attr(PACKETBUF_ATTR_GOING_UP)) {
     /* Calculate hop-by-hop EDC (only for up traffic) */
     uint16_t curr_hbh_edc = packetbuf_attr(PACKETBUF_ATTR_EDC);
@@ -670,15 +673,17 @@ broadcast_acked(const rimeaddr_t *receiver) {
 
 void
 check_neighbors() {
-#if UP_ONLY == 0
-  struct neighbor_addr *n;
-  for(n = neighbor_attr_list_neighbors(); n != NULL; n = n->next) {
-    uint16_t neighbor_id = node_id_from_rimeaddr(&n->addr);
-    if(neighbor_id != 0) {
-      anycast_add_neighbor_to_bloom(&n->addr, "broadcast done");
+  if(orpl_up_only == 0) {
+    rpl_parent_t *p;
+    for(p = nbr_table_head(rpl_parents);
+          p != NULL;
+          p = nbr_table_next(rpl_parents, p)) {
+      uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents, p));
+      if(neighbor_id != 0) {
+        anycast_add_neighbor_to_bloom(nbr_table_get_lladdr(rpl_parents, p), "broadcast done");
+      }
     }
   }
-#endif
 }
 
 void

@@ -50,7 +50,7 @@ int blacklist_contains(uint32_t seqno);
 void acked_down_insert(uint32_t seqno, uint16_t id);
 int acked_down_contains(uint32_t seqno, uint16_t id);
 void received_noip();
-void anycast_init(int is_sink);
+void anycast_init(int is_sink, int up_only);
 void softack_acked_callback(const uint8_t *buf, uint8_t len);
 void softack_input_callback(const uint8_t *buf, uint8_t len, uint8_t **ackbufptr, uint8_t *acklen);
 

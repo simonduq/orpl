@@ -5,33 +5,19 @@
 #include "sys/etimer.h"
 #include "net/uip.h"
 #include "net/uip-ds6.h"
-
-#if IN_COOJA
-#define DEBUG DEBUG_ANNOTATE
-#else
-#define DEBUG DEBUG_NONE
-#endif
-
 #include "net/uip-debug.h"
 #include "net/packetbuf.h"
 #include "net/rpl/rpl.h"
 #include "net/netstack.h"
-
 #include "anycast.h"
 #include "node-id.h"
 #include "bloom.h"
 #include "simple-energest.h"
-
 #include "simple-udp.h"
 #include "rpl-tools.h"
 #include "cc2420.h"
-
 #include <stdio.h>
 #include <string.h>
-
-#if (UP_ONLY == 0)
-#error UP_ONLY is not set
-#endif
 
 #define SEND_INTERVAL   (60 * CLOCK_SECOND)
 #define UDP_PORT 1234
@@ -97,7 +83,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 
   printf("App: %u starting\n", node_id);
 
-  anycast_init(node_id == ROOT_ID);
+  anycast_init(node_id == ROOT_ID, 1);
   rpl_setup(node_id == ROOT_ID, node_id);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
