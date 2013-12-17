@@ -41,6 +41,7 @@
 #include "net/rpl/rpl.h"
 #include "random.h"
 #include "ds2411.h"
+#include <string.h>
 
 /* Our global IPv6 prefix */
 static uip_ipaddr_t prefix;

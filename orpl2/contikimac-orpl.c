@@ -51,7 +51,7 @@
 #include "sys/pt.h"
 #include "sys/rtimer.h"
 #include "anycast.h"
-#include "node-id.h"
+#include "deployment.h"
 #include "orpl-log.h"
 
 #include <string.h>

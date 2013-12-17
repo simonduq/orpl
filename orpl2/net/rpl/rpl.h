@@ -118,7 +118,7 @@ struct rpl_parent {
 #if WITH_ORPL
   uint16_t bc_ackcount; /* Broadcast ack count */
 #endif /* WITH_ORPL */
-  uint8_t link_metric;
+  uint16_t link_metric;
   uint8_t dtsn;
   uint8_t updated;
 };

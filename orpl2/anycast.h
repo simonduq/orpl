@@ -35,6 +35,7 @@ extern uint32_t bloom_merged_count;
 extern int sending_bloom;
 extern int is_edc_root;
 
+void orpl_print_ranks();
 uint8_t frame80254_parse_anycast_irq(uint8_t *data, uint8_t len);
 uint8_t frame80254_parse_anycast_process(uint8_t *data, uint8_t len, int acked, uint16_t *rank);
 void anycast_packet_sent();

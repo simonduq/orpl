@@ -17,7 +17,6 @@
 #include "orpl-log.h"
 #include "random.h"
 #include "net/rpl/rpl-private.h"
-#include <stdio.h>
 #include <string.h>
 
 #if IN_COOJA
@@ -54,6 +53,8 @@
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 #define BLOOM_MAGIC 0x83d9
+
+void rpl_link_neighbor_callback(const rimeaddr_t *addr, int status, int numtx);
 
 int forwarder_set_size = 0;
 int neighbor_set_size = 0;
@@ -118,6 +119,10 @@ void check_neighbors();
 int test_prr(uint16_t count, uint16_t threshold);
 void bloom_received(struct bloom_broadcast_s *data);
 void bloom_request_broadcast();
+
+int is_node_addressable(uip_ipaddr_t *ipv6) {
+  return 1;
+}
 
 /*---------------------------------------------------------------------------*/
 void update_annotations() {
@@ -187,7 +192,7 @@ int acked_down_contains(uint32_t seqno, uint16_t id) {
   return 0;
 }
 
-void debug_ranks() {
+void orpl_print_ranks() {
   rpl_parent_t *p;
   printf("Ackcount: start\n");
   for(p = nbr_table_head(rpl_parents);
@@ -223,7 +228,7 @@ void debug_ranks() {
     }
     uip_ipaddr_t dest_ipaddr;
     uint16_t id = get_node_id_from_index(i);
-    set_ipaddr_from_rimeaddr(&dest_ipaddr, id);
+    set_ipaddr_from_id(&dest_ipaddr, id);
     int contained = is_in_subdodag(&dest_ipaddr);
     if(contained) {
       count+=1;
@@ -329,7 +334,7 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
       ) {
     set_ipaddr_from_id(&neighbor_ipaddr, neighbor_id);
     if(test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
-      if(is_node_addressable(neighbor_ipaddr)) {
+      if(is_node_addressable(&neighbor_ipaddr)) {
         int bit_count_before = bloom_count_bits(&dbf);
         bloom_insert(&dbf, (unsigned char*)&neighbor_ipaddr, 16);
         int bit_count_after = bloom_count_bits(&dbf);
@@ -726,10 +731,6 @@ is_reachable_neighbor(uip_ipaddr_t *ipv6) {
   return 0;
 }
 
-int is_node_addressable(uip_ipaddr_t *ipv6) {
-  return 1;
-}
-
 int
 is_in_subdodag(uip_ipaddr_t *ipv6) {
   return is_node_addressable(ipv6) && bloom_contains(&dbf, (unsigned char*)ipv6, 16);
@@ -877,7 +878,7 @@ frame80254_parse_anycast_irq(uint8_t *data, uint8_t len)
 
         do_ack = acked_down_contains(seqno, neighbor_id);
       }
-    } else if(rimeaddr_cmp(dest_addr_reverted,&rimeaddr_node_addr)) {
+    } else if(rimeaddr_cmp((rimeaddr_t*)dest_addr_reverted,&rimeaddr_node_addr)) {
     	do_ack = 1;
     }
   }

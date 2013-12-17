@@ -41,7 +41,6 @@
 #include "net/rpl/rpl-private.h"
 #include "net/packetbuf.h"
 #include "orpl-log.h"
-#include <stdio.h>
 #include <string.h>
 
 /* Copy an appdata to another with no assumption that the addresses are aligned */

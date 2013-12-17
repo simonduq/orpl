@@ -53,6 +53,7 @@
 
 #include "node-id.h"
 #if WITH_ORPL
+#include "deployment.h"
 #include "net/uip.h"
 #include "anycast.h"
 #include "orpl-log.h"

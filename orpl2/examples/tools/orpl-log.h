@@ -37,6 +37,8 @@
 #ifndef ORPL_LOG_H
 #define ORPL_LOG_H
 
+#include <stdio.h>
+
 /* Data strcutrues copied at the end of all data packets, making it possible
  * to trace packets at every hop, from every layer. */
 struct app_data {

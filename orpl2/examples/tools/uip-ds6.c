@@ -531,7 +531,7 @@ uip_ds6_set_addr_iid(uip_ipaddr_t *ipaddr, uip_lladdr_t *lladdr)
 {
   /* Use simple IPv6 addresses based on node-id instead of standard iid,
    * enabling simpler logging and packet tracing. */
-  set_iid_from_rimeaddr(ipaddr, lladdr);
+  set_iid_from_rimeaddr(ipaddr, (const rimeaddr_t *)lladdr);
 }
 
 /*---------------------------------------------------------------------------*/
