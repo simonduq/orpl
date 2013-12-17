@@ -30,7 +30,7 @@
 /**
  * \file
  *         Code managing id<->mac address<->IPv6 address mapping, and doing this
- *         for different deployment scenarios: Cooja, Nodes, Indriya or Twist testbeds.
+ *         for different deployment scenarios: Cooja, Nodes, Indriya or Twist testbeds
  *
  * \author Simon Duquennoy <simonduq@sics.se>
  */
