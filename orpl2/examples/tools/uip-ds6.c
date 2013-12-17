@@ -532,25 +532,8 @@ uip_ds6_select_src(uip_ipaddr_t *src, uip_ipaddr_t *dst)
 void
 uip_ds6_set_addr_iid(uip_ipaddr_t *ipaddr, uip_lladdr_t *lladdr)
 {
-#if !WITH_ORPL
-  /* We consider only links with IEEE EUI-64 identifier or
-   * IEEE 48-bit MAC addresses */
-#if (UIP_LLADDR_LEN == 8)
-  memcpy(ipaddr->u8 + 8, lladdr, UIP_LLADDR_LEN);
-  ipaddr->u8[8] ^= 0x02;
-#elif (UIP_LLADDR_LEN == 6)
-  memcpy(ipaddr->u8 + 8, lladdr, 3);
-  ipaddr->u8[11] = 0xff;
-  ipaddr->u8[12] = 0xfe;
-  memcpy(ipaddr->u8 + 13, (uint8_t *)lladdr + 3, 3);
-  ipaddr->u8[8] ^= 0x02;
-#else
-#error uip-ds6.c cannot build interface address when UIP_LLADDR_LEN is not 6 or 8
-#endif
-#else /* WITH_ORPL */
   uint16_t id = node_id_from_rimeaddr((const rimeaddr_t*)lladdr);
   orpl_set_addr_iid_from_id(ipaddr, id);
-#endif /* WITH_ORPL */
 }
 
 /*---------------------------------------------------------------------------*/
