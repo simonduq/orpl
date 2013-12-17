@@ -9,10 +9,6 @@ UIP_CONF_IPV6=1
 CFLAGS+= -DUIP_CONF_IPV6_RPL
 PROJECT_SOURCEFILES += bloom.c simple-energest.c orpl-log.c cc2420-softack.c contikimac-orpl.c anycast.c rpl-of-edc.c deployment.c
 
-ifdef NO_WARNINGS
-	CFLAGS += -w
-endif
-
 CYCLE_TIME ?= 500
 CFLAGS += -DCMD_CYCLE_TIME=$(CYCLE_TIME)
 
@@ -27,9 +23,6 @@ CFLAGS += -DCMD_BLOOM_FP_RECOVERY=$(BLOOM_FP_RECOVERY)
 
 EDC_W ?= 64
 CFLAGS += -DCMD_EDC_W=$(EDC_W)
-
-ACK_WITH_ADDR ?= 1
-CFLAGS += -DCMD_ACK_WITH_ADDR=$(ACK_WITH_ADDR)
 
 .PHONY: curr_contiki_head
 all: $(CONTIKI_PROJECT)
