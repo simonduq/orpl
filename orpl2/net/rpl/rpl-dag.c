@@ -92,11 +92,17 @@ rpl_dag_init(void)
 rpl_rank_t
 rpl_get_parent_rank(uip_lladdr_t *addr)
 {
+  return rpl_get_parent_rank_default(addr, 0);
+}
+/*---------------------------------------------------------------------------*/
+rpl_rank_t
+rpl_get_parent_rank_default(uip_lladdr_t *addr, rpl_rank_t default_value)
+{
   rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
   if(p != NULL) {
     return p->rank;
   } else {
-    return (rpl_rank_t)-1;
+    return default_value;
   }
 }
 /*---------------------------------------------------------------------------*/
@@ -110,33 +116,13 @@ rpl_set_parent_rank(uip_lladdr_t *addr, rpl_rank_t rank)
 }
 /*---------------------------------------------------------------------------*/
 uint16_t
-rpl_get_parent_ac_ackcount(uip_lladdr_t *addr)
-{
-  rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
-  if(p != NULL) {
-    return p->ac_ackcount;
-  } else {
-    return 0;
-  }
-}
-/*---------------------------------------------------------------------------*/
-void
-rpl_set_parent_ac_ackcount(uip_lladdr_t *addr, uint16_t ac_ackcount)
-{
-  rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
-  if(p != NULL) {
-    p->ac_ackcount = ac_ackcount;
-  }
-}
-/*---------------------------------------------------------------------------*/
-uint16_t
-rpl_get_parent_bc_ackcount(uip_lladdr_t *addr)
+rpl_get_parent_bc_ackcount_default(uip_lladdr_t *addr, uint16_t default_value)
 {
   rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
   if(p != NULL) {
     return p->bc_ackcount;
   } else {
-    return 0;
+    return default_value;
   }
 }
 /*---------------------------------------------------------------------------*/
@@ -603,7 +589,6 @@ rpl_add_parent(rpl_dag_t *dag, rpl_dio_t *dio, uip_ipaddr_t *addr)
     p->rank = dio->rank;
     p->dtsn = dio->dtsn;
     p->link_metric = RPL_INIT_LINK_METRIC * RPL_DAG_MC_ETX_DIVISOR;
-    p->ac_ackcount = 0;
     p->bc_ackcount = 0;
 #if RPL_DAG_MC != RPL_DAG_MC_NONE
     memcpy(&p->mc, &dio->mc, sizeof(p->mc));
@@ -806,7 +791,9 @@ rpl_nullify_parent(rpl_parent_t *parent)
         uip_ds6_defrt_rm(dag->instance->def_route);
         dag->instance->def_route = NULL;
       }
-      dao_output(parent, RPL_ZERO_LIFETIME);
+      if(dag->instance->mop != RPL_MOP_NO_DOWNWARD_ROUTES) {
+        dao_output(parent, RPL_ZERO_LIFETIME);
+      }
     }
   }
 
@@ -1193,6 +1180,7 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
 
 #if WITH_ORPL // TODO ORPL: won't be needed once we use rpl_parent->rank instead
   rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), dio->rank);
+  update_e2e_edc(0);
 #endif /* WITH_ORPL */
 
   if(dio->mop != RPL_MOP_DEFAULT) {

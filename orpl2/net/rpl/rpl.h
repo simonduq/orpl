@@ -116,7 +116,6 @@ struct rpl_parent {
 #endif /* RPL_DAG_MC != RPL_DAG_MC_NONE */
   rpl_rank_t rank;
 #if WITH_ORPL
-  uint16_t ac_ackcount; /* Anycast ack count */
   uint16_t bc_ackcount; /* Broadcast ack count */
 #endif /* WITH_ORPL */
   uint8_t link_metric;
@@ -250,12 +249,10 @@ void rpl_remove_header(void);
 uint8_t rpl_invert_header(void);
 uip_ipaddr_t *rpl_get_parent_ipaddr(rpl_parent_t *nbr);
 rpl_rank_t rpl_get_parent_rank(uip_lladdr_t *addr);
+rpl_rank_t rpl_get_parent_rank_default(uip_lladdr_t *addr, rpl_rank_t default_value);
 void rpl_set_parent_rank(uip_lladdr_t *addr, rpl_rank_t rank);
-uint16_t rpl_get_parent_ac_ackcount(uip_lladdr_t *addr);
-void rpl_set_parent_ac_ackcount(uip_lladdr_t *addr, uint16_t ac_ackcount);
-uint16_t rpl_get_parent_bc_ackcount(uip_lladdr_t *addr);
+uint16_t rpl_get_parent_bc_ackcount_default(uip_lladdr_t *addr, uint16_t default_value);
 void rpl_set_parent_bc_ackcount(uip_lladdr_t *addr, uint16_t bc_ackcount);
-uint16_t rpl_get_parent_link_metric(uip_lladdr_t *addr);
 void rpl_dag_init(void);
 /*---------------------------------------------------------------------------*/
 #endif /* RPL_H */

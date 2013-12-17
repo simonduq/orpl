@@ -90,10 +90,7 @@ double_bf dbf;
 int sending_bloom = 0;
 int is_edc_root = 0;
 
-#if ACK_WITH_ADDR
 uint32_t broadcast_count = 0;
-uint32_t anycast_up_count = 0;
-#endif
 
 static struct bloom_broadcast_s bloom_broadcast;
 static struct acked_down acked_down[ACKED_DOWN_SIZE];static uint16_t last_broadcasted_rank = 0xffff;
@@ -268,23 +265,21 @@ bloom_received(struct bloom_broadcast_s *data)
   uint16_t neighbor_rank = data->rank;
 
   /* EDC: store rank as neighbor attribute, update metric */
-  uint16_t rank_before = rpl_get_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER));
+  uint16_t rank_before = rpl_get_parent_rank_default((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), 0xffff);
   printf("Bloom: received rank from %u %u -> %u (%p)\n", neighbor_id, rank_before, neighbor_rank, data);
 
   rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_rank);
   update_e2e_edc(0);
 
-  uint16_t count = rpl_get_parent_bc_ackcount((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER));
-  if(count == -1) {
+  uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), 0xffff);
+  if(count == 0xffff) {
     return;
   }
 
 #if UP_ONLY == 0
   uip_ipaddr_t sender_ipaddr;
-  ANNOTATE("#L %u 0\n", neighbor_id);
   /* Merge Bloom filters */
   if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > rank && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
-	ANNOTATE("#L %u 1\n", neighbor_id);
     node_ip6addr(&sender_ipaddr, neighbor_id);
     int bit_count_before = bloom_count_bits(&dbf);
     if(is_id_addressable(neighbor_id)) {
@@ -309,12 +304,11 @@ bloom_received(struct bloom_broadcast_s *data)
 void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message) {
   uip_ipaddr_t neighbor_ipaddr;
   uint16_t neighbor_id = node_id_from_rimeaddr(neighbor_addr);
-  uint16_t count = rpl_get_parent_bc_ackcount((uip_lladdr_t *)neighbor_addr);
-  if(count == -1) {
+  uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)neighbor_addr, 0xffff);
+  if(count == 0xffff) {
     return;
   }
-  uint16_t neighbor_rank = rpl_get_parent_rank((uip_lladdr_t *)neighbor_addr);
-  ANNOTATE("#L %u 0\n", neighbor_id);
+  uint16_t neighbor_rank = rpl_get_parent_rank_default((uip_lladdr_t *)neighbor_addr, 0xffff);
   if(neighbor_rank != 0xffff
 #if (ALL_NEIGHBORS_IN_FILTER==0)
       && neighbor_rank > (rank + EDC_W)
@@ -323,7 +317,6 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
     node_ip6addr(&neighbor_ipaddr, neighbor_id);
     if(test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       if(is_id_addressable(neighbor_id)) {
-    	ANNOTATE("#L %u 1\n", neighbor_id);
         int bit_count_before = bloom_count_bits(&dbf);
         bloom_insert(&dbf, (unsigned char*)&neighbor_ipaddr, 16);
         int bit_count_after = bloom_count_bits(&dbf);
@@ -569,6 +562,7 @@ update_e2e_edc(int verbose) {
         uint16_t rank = p->rank;
         uint16_t ackcount = p->bc_ackcount;
         uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents,p));
+
         if(neighbor_id != 0
             && rank != 0xffff
             && ackcount != 0
@@ -588,15 +582,11 @@ update_e2e_edc(int verbose) {
         neighbor_set_size++;
         if(add_to_forwarder_set(curr_min, curr_min_rank, curr_min_ackcount, verbose) == 1) {
           forwarder_set_size++;
-#if UP_ONLY
           if(verbose) printf("*\n");
           ANNOTATE("#L %u 1\n", curr_id);
-#endif
         } else {
-#if UP_ONLY
           if(verbose) printf("\n");
           ANNOTATE("#L %u 0\n", curr_id);
-#endif
         }
         prev_index = curr_index;
         prev_min = curr_min;
@@ -653,17 +643,8 @@ anycast_packet_sent() {
 
     printf("Anycast: updated hbh_edc %u -> %u (%u %u)\n", hbh_edc_old, hbh_edc, curr_hbh_edc, weighted_curr_hbh_edc);
 
-    const rimeaddr_t *receiver = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
-    uint16_t count = rpl_get_parent_ac_ackcount((uip_lladdr_t *)receiver);
-    if(count == -1) {
-    	count = 0;
-    }
-    count++;
-    rpl_set_parent_ac_ackcount((uip_lladdr_t *)receiver, count);
-    anycast_up_count++;
-
       /* Calculate end-to-end EDC */
-    update_e2e_edc(0);
+    update_e2e_edc(1);
   }
 }
 
@@ -679,11 +660,7 @@ void
 broadcast_acked(const rimeaddr_t *receiver) {
   uint16_t neighbor_id = node_id_from_rimeaddr(receiver);
   if(neighbor_id != 0) {
-    uint16_t count = rpl_get_parent_bc_ackcount((uip_lladdr_t *)receiver);
-    if(count == -1) {
-    	count = 0;
-    }
-    count++;
+    uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)receiver, 0) + 1;
     if(count > broadcast_count+1) {
       count = broadcast_count+1;
     }

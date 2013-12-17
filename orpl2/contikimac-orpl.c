@@ -763,12 +763,11 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
 #endif /* RDC_CONF_HARDWARE_CSMA */
 
 #if !RDC_CONF_HARDWARE_ACK
-  if(!is_broadcast) {
     /* Turn radio on to receive expected unicast ack.  Not necessary
        with hardware ack detection, and may trigger an unnecessary cca
        or rx cycle */
+    /* ORPL: we also do this for broadcast as we also ack them */
      on();
-  }
 #endif
 
   uint8_t ackbuf[ACK_LEN];
