@@ -83,8 +83,8 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 
   printf("App: %u starting\n", node_id);
 
-  anycast_init(node_id == ROOT_ID, 1);
-  rpl_setup(node_id == ROOT_ID, node_id);
+  uip_ipaddr_t *my_ipaddr = tools_setup_addresses(node_id);
+  anycast_init(my_ipaddr, node_id == ROOT_ID, 1);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 

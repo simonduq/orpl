@@ -55,6 +55,13 @@
 
 #define BLOOM_MAGIC 0x83d9
 
+static rtimer_clock_t start_time;
+static uip_ipaddr_t prefix;
+
+int time_elapsed() {
+  return (RTIMER_NOW()-start_time)/(RTIMER_ARCH_SECOND*60);
+}
+
 static int orpl_up_only = 0;
 
 struct bloom_broadcast_s {
@@ -405,11 +412,16 @@ orpl_trickle_callback(rpl_instance_t *instance) {
   update_annotations();
 }
 
-void anycast_init(int is_sink, int up_only) {
+void anycast_init(const uip_ipaddr_t *my_ipaddr, int is_root, int up_only) {
+
+  uip_ip6addr(&prefix, 0, 0, 0, 0, 0, 0, 0, 0);
+  memcpy(&prefix, my_ipaddr, 8);
+
+  start_time = RTIMER_NOW();
 
   orpl_up_only = up_only;
 
-  is_edc_root = is_sink;
+  is_edc_root = is_root;
   if(is_edc_root) {
 	ANNOTATE("#A color=red\n");
     rank = e2e_edc = 0;
@@ -419,6 +431,10 @@ void anycast_init(int is_sink, int up_only) {
 //  simple_udp_register(&bloom_connection, UDP_PORT,
 //                        NULL, UDP_PORT,
 //                        bloom_udp_received);
+
+  if(node_id == ROOT_ID) {
+    create_rpl_dag(my_ipaddr);
+  }
 }
 
 void anycast_set_packetbuf_addr() {

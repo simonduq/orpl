@@ -3,13 +3,11 @@
 
 #include "net/uip.h"
 
-extern uip_ipaddr_t prefix;
-
 void create_rpl_dag(uip_ipaddr_t *ipaddr);
 uip_ipaddr_t * set_global_address(void);
 void set_addr_iid(uip_ipaddr_t *ipaddr, uint16_t id);
 void node_ip6addr(uip_ipaddr_t *ipaddr, uint16_t id);
-void rpl_setup(int is_root, uint16_t id);
+uip_ipaddr_t *tools_setup_addresses(uint16_t id);
 
 #define APP_PAYLOAD_LEN 64
 struct app_data {
@@ -34,7 +32,6 @@ extern int forwarder_set_size;
 extern int neighbor_set_size;
 extern int curr_dio_interval;
 extern uint16_t rank;
-extern rtimer_clock_t start_time;
 
 #define rpl_trace(...) printf(__VA_ARGS__)
 #define rpl_trace_from_dataptr(appdataptr, ...) { printf(__VA_ARGS__); rpl_log(appdataptr); }

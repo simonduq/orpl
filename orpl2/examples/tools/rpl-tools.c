@@ -6,18 +6,12 @@
 #include <stdio.h>
 #include <string.h>
 
-uip_ipaddr_t my_ipaddr;
-uip_ipaddr_t prefix;
+static uip_ipaddr_t my_ipaddr;
+static uip_ipaddr_t prefix;
 
 int forwarder_set_size = 0;
 int neighbor_set_size = 0;
 uint16_t rank = 0xffff;
-
-rtimer_clock_t start_time;
-
-int time_elapsed() {
-  return (RTIMER_NOW()-start_time)/(RTIMER_ARCH_SECOND*60);
-}
 
 /*---------------------------------------------------------------------------*/
 void app_data_init(struct app_data *dst, struct app_data *src) {
@@ -95,12 +89,10 @@ void node_ip6addr(uip_ipaddr_t *ipaddr, uint16_t id) {
 }
 
 /*---------------------------------------------------------------------------*/
-void rpl_setup(int is_root, uint16_t id) {
-  start_time = RTIMER_NOW();
+uip_ipaddr_t *
+tools_setup_addresses(uint16_t id) {
   uip_ip6addr(&prefix, 0xaaaa, 0, 0, 0, 0, 0, 0, 0);
   node_ip6addr(&my_ipaddr, id);
   uip_ds6_addr_add(&my_ipaddr, 0, ADDR_AUTOCONF);
-  if(is_root) {
-    create_rpl_dag(&my_ipaddr);
-  }
+  return &my_ipaddr;
 }
