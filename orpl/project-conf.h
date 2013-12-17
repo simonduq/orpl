@@ -41,7 +41,7 @@
  * - stop updating EDC after N minutes
  * - start updating Bloom filters only after N+1 minutes
  * - don't age Bloom filters */
-#define FREEZE_TOPOLOGY 0
+#define FREEZE_TOPOLOGY 1
 
 #undef RPL_CONF_MOP
 #define RPL_CONF_MOP RPL_MOP_NO_DOWNWARD_ROUTES
