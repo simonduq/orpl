@@ -78,7 +78,7 @@ void app_send_to(uint16_t id) {
   data.hop = 0;
   data.fpcount = 0;
 
-  node_ip6addr(&dest_ipaddr, id);
+  set_ipaddr_from_id(&dest_ipaddr, id);
 
   rpl_trace_from_dataptr(&data, "App: sending");
 
@@ -92,6 +92,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 {
   static struct etimer periodic_timer;
   static struct etimer send_timer;
+  uip_ipaddr_t global_ipaddr;
 
   PROCESS_BEGIN();
 
@@ -108,8 +109,8 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 
   printf("App: %u starting\n", node_id);
 
-  uip_ipaddr_t *my_ipaddr = tools_setup_addresses(node_id);
-  anycast_init(my_ipaddr, node_id == ROOT_ID, 1);
+  deployment_init(&global_ipaddr);
+  anycast_init(&global_ipaddr, node_id == ROOT_ID, 1);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 

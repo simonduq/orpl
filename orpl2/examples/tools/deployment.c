@@ -38,8 +38,12 @@
 #include "contiki-conf.h"
 #include "deployment.h"
 #include "sys/node-id.h"
+#include "net/rpl/rpl.h"
 #include "random.h"
 #include "ds2411.h"
+
+/* Our global IPv6 prefix */
+static uip_ipaddr_t prefix;
 
 /* ID<->MAC address mapping */
 struct id_mac {
@@ -70,7 +74,7 @@ static const struct id_mac id_mac_list[] = {
 uint16_t
 get_node_id()
 {
-  return node_id_from_rimeaddr(&ds2411_id);
+  return node_id_from_rimeaddr((const rimeaddr_t *)&ds2411_id);
 }
 
 /* Returns the total number of nodes in the deployment */
@@ -102,15 +106,65 @@ node_id_from_rimeaddr(const rimeaddr_t *addr)
 }
 
 /* Returns a node-id from a node's IPv6 address */
-uint16_t node_id_from_ipaddr(const uip_ipaddr_t *addr) {
+uint16_t
+node_id_from_ipaddr(const uip_ipaddr_t *addr)
+{
   return (addr->u8[14] << 8) + addr->u8[15];
 }
 
 /* Returns a node-id from a node's absolute index in the deployment */
-uint16_t get_node_id_from_index(uint16_t index) {
+uint16_t
+get_node_id_from_index(uint16_t index)
+{
 #if IN_COOJA
   return 1 + (index % N_NODES);
 #else
   return id_mac_list[index % N_NODES].id;
 #endif
+}
+
+/* Sets the IID of an IPv6 from a link-layer address */
+void
+set_iid_from_rimeaddr(uip_ipaddr_t *ipaddr, const rimeaddr_t *lladdr)
+{
+  set_iid_from_id(ipaddr, node_id_from_rimeaddr((const rimeaddr_t*)lladdr));
+}
+
+/* Sets the IID of an IPv6 from a node-id */
+void
+set_iid_from_id(uip_ipaddr_t *ipaddr, uint16_t id)
+{
+  ipaddr->u8[8] = ipaddr->u8[10] = ipaddr->u8[12] = ipaddr->u8[14] = id >> 8;
+  ipaddr->u8[9] = ipaddr->u8[11] = ipaddr->u8[13] = ipaddr->u8[15] = id;
+}
+
+/* Sets an IPv6 from a link-layer address */
+void
+set_ipaddr_from_rimeaddr(uip_ipaddr_t *ipaddr, const rimeaddr_t *lladdr) {
+  set_ipaddr_from_id(ipaddr, node_id_from_rimeaddr((const rimeaddr_t*)lladdr));
+}
+
+/* Sets an IPv6 from a node-id */
+void
+set_ipaddr_from_id(uip_ipaddr_t *ipaddr, uint16_t id)
+{
+  memcpy(ipaddr, &prefix, 8);
+  set_iid_from_id(ipaddr, id);
+}
+
+/* Initializes global IPv6 and creates DODAG */
+void
+deployment_init(uip_ipaddr_t *ipaddr) {
+  uint16_t id = get_node_id();
+  rpl_dag_t *dag;
+
+  uip_ip6addr(&prefix, 0xaaaa, 0, 0, 0, 0, 0, 0, 0);
+  set_ipaddr_from_id(ipaddr, id);
+  uip_ds6_addr_add(ipaddr, 0, ADDR_AUTOCONF);
+
+  if(node_id == ROOT_ID) {
+    rpl_set_root(RPL_DEFAULT_INSTANCE, ipaddr);
+    dag = rpl_get_any_dag();
+    rpl_set_prefix(dag, &prefix, 64);
+  }
 }

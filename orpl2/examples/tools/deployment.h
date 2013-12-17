@@ -66,11 +66,21 @@
 uint16_t get_n_nodes();
 /* Returns the total number of nodes in the deployment */
 uint16_t get_node_id();
-/* Returns a node-id from a node's rimeaddr */
+/* Returns a node-id from a node's link-layer address */
 uint16_t node_id_from_rimeaddr(const rimeaddr_t *addr);
 /* Returns a node-id from a node's IPv6 address */
 uint16_t node_id_from_ipaddr(const uip_ipaddr_t *addr);
 /* Returns a node-id from a node's absolute index in the deployment */
 uint16_t get_node_id_from_index(uint16_t index);
+/* Sets the IID of an IPv6 from a link-layer address */
+void set_iid_from_rimeaddr(uip_ipaddr_t *ipaddr, const rimeaddr_t *lladdr);
+/* Sets the IID of an IPv6 from a node-id */
+void set_iid_from_id(uip_ipaddr_t *ipaddr, uint16_t id);
+/* Sets an IPv6 from a link-layer address */
+void set_ipaddr_from_rimeaddr(uip_ipaddr_t *ipaddr, const rimeaddr_t *lladdr);
+/* Sets an IPv6 from a link-layer address */
+void set_ipaddr_from_id(uip_ipaddr_t *ipaddr, uint16_t id);
+/* Initializes global IPv6 and creates DODAG */
+void deployment_init(uip_ipaddr_t *ipaddr);
 
 #endif /* DEPLOYMENT_H */

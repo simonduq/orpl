@@ -47,10 +47,7 @@
 #include "net/uip-nd6.h"
 #include "net/uip-ds6.h"
 #include "net/uip-packetqueue.h"
-#if WITH_ORPL
-#include "node-id.h"
-#include "rpl-tools.h"
-#endif /* WITH_ORPL */
+#include "deployment.h"
 
 #if UIP_CONF_IPV6
 
@@ -534,8 +531,7 @@ uip_ds6_set_addr_iid(uip_ipaddr_t *ipaddr, uip_lladdr_t *lladdr)
 {
   /* Use simple IPv6 addresses based on node-id instead of standard iid,
    * enabling simpler logging and packet tracing. */
-  uint16_t id = node_id_from_rimeaddr((const rimeaddr_t*)lladdr);
-  orpl_set_addr_iid_from_id(ipaddr, id);
+  set_iid_from_rimeaddr(ipaddr, lladdr);
 }
 
 /*---------------------------------------------------------------------------*/

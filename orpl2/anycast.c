@@ -221,7 +221,7 @@ void debug_ranks() {
     }
     uip_ipaddr_t dest_ipaddr;
     uint16_t id = get_node_id_from_index(i);
-    node_ip6addr(&dest_ipaddr, id);
+    set_ipaddr_from_rimeaddr(&dest_ipaddr, id);
     int contained = is_in_subdodag(&dest_ipaddr);
     if(contained) {
       count+=1;
@@ -291,7 +291,7 @@ bloom_received(struct bloom_broadcast_s *data)
     uip_ipaddr_t sender_ipaddr;
     /* Merge Bloom filters */
     if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > rank && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
-      node_ip6addr(&sender_ipaddr, neighbor_id);
+      set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
       int bit_count_before = bloom_count_bits(&dbf);
       if(is_node_addressable(&sender_ipaddr)) {
         bloom_insert(&dbf, (unsigned char*)&sender_ipaddr, 16);
@@ -325,7 +325,7 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
       && neighbor_rank > (rank + EDC_W)
 #endif
       ) {
-    node_ip6addr(&neighbor_ipaddr, neighbor_id);
+    set_ipaddr_from_id(&neighbor_ipaddr, neighbor_id);
     if(test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       if(is_node_addressable(neighbor_ipaddr)) {
         int bit_count_before = bloom_count_bits(&dbf);
@@ -412,10 +412,10 @@ orpl_trickle_callback(rpl_instance_t *instance) {
   update_annotations();
 }
 
-void anycast_init(const uip_ipaddr_t *my_ipaddr, int is_root, int up_only) {
+void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
 
   uip_ip6addr(&prefix, 0, 0, 0, 0, 0, 0, 0, 0);
-  memcpy(&prefix, my_ipaddr, 8);
+  memcpy(&prefix, global_ipaddr, 8);
 
   start_time = RTIMER_NOW();
 
@@ -432,9 +432,6 @@ void anycast_init(const uip_ipaddr_t *my_ipaddr, int is_root, int up_only) {
 //                        NULL, UDP_PORT,
 //                        bloom_udp_received);
 
-  if(node_id == ROOT_ID) {
-    create_rpl_dag(my_ipaddr);
-  }
 }
 
 void anycast_set_packetbuf_addr() {
