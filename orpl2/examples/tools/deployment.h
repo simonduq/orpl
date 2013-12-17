@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Swedish Institute of Computer Science.
+ * Copyright (c) 2013, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,14 +25,17 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+  *
+ */
+/**
+ * \file
+ *         Macros setting up the deployment, header file for deployment.c
  *
- * $Id: project-conf.h,v 1.1 2010/10/21 18:23:44 joxe Exp $
+ * \author Simon Duquennoy <simonduq@sics.se>
  */
 
-#ifndef __DEPLOYMENT_H__
-#define __DEPLOYMENT_H__
-
-#include <stdio.h>
+#ifndef DEPLOYMENT_H
+#define DEPLOYMENT_H
 
 #define DEPLOYMENT_COOJA        1
 #define DEPLOYMENT_MOTES        2
@@ -46,16 +49,28 @@
 #define IN_TWIST (DEPLOYMENT == DEPLOYMENT_TWIST)
 #define IN_INDRIYA (DEPLOYMENT == DEPLOYMENT_INDRIYA)
 
-#define TINYOS_SERIAL_FRAMES (IN_TWIST || IN_INDRIYA)
-#define WITH_TINYOS_FRAMES (IN_TWIST || IN_INDRIYA)
-
 #if IN_TWIST
 #define ROOT_ID 137
-//#define ROOT_ID 272
 #elif IN_INDRIYA
 #define ROOT_ID 20
 #else
 #define ROOT_ID 1
 #endif
 
-#endif /* __DEPLOYMENT_H__ */
+#include "contiki-conf.h"
+#include "sys/node-id.h"
+#include "net/uip.h"
+#include "net/rime/rimeaddr.h"
+
+/* Returns the node's node-id */
+uint16_t get_n_nodes();
+/* Returns the total number of nodes in the deployment */
+uint16_t get_node_id();
+/* Returns a node-id from a node's rimeaddr */
+uint16_t node_id_from_rimeaddr(const rimeaddr_t *addr);
+/* Returns a node-id from a node's IPv6 address */
+uint16_t node_id_from_ipaddr(const uip_ipaddr_t *addr);
+/* Returns a node-id from a node's absolute index in the deployment */
+uint16_t get_node_id_from_index(uint16_t index);
+
+#endif /* DEPLOYMENT_H */

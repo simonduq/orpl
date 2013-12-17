@@ -36,10 +36,10 @@
  * \author Simon Duquennoy <simonduq@sics.se>
  */
 
-#include "contiki.h"
+#include "contiki-conf.h"
 #include "lib/random.h"
 #include "anycast.h"
-#include "node-id.h"
+#include "deployment.h"
 #include "simple-energest.h"
 #include "simple-udp.h"
 #include "cc2420.h"

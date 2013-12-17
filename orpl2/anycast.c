@@ -220,7 +220,7 @@ void debug_ranks() {
       print_header = 0;
     }
     uip_ipaddr_t dest_ipaddr;
-    uint16_t id = get_node_id(i);
+    uint16_t id = get_node_id_from_index(i);
     node_ip6addr(&dest_ipaddr, id);
     int contained = is_in_subdodag(&dest_ipaddr);
     if(contained) {
@@ -293,7 +293,7 @@ bloom_received(struct bloom_broadcast_s *data)
     if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > rank && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       node_ip6addr(&sender_ipaddr, neighbor_id);
       int bit_count_before = bloom_count_bits(&dbf);
-      if(is_id_addressable(neighbor_id)) {
+      if(is_node_addressable(&sender_ipaddr)) {
         bloom_insert(&dbf, (unsigned char*)&sender_ipaddr, 16);
         printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bloom_count_bits(&dbf), "bloom received");
       }
@@ -327,7 +327,7 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
       ) {
     node_ip6addr(&neighbor_ipaddr, neighbor_id);
     if(test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
-      if(is_id_addressable(neighbor_id)) {
+      if(is_node_addressable(neighbor_ipaddr)) {
         int bit_count_before = bloom_count_bits(&dbf);
         bloom_insert(&dbf, (unsigned char*)&neighbor_ipaddr, 16);
         int bit_count_after = bloom_count_bits(&dbf);
@@ -727,9 +727,13 @@ is_reachable_neighbor(uip_ipaddr_t *ipv6) {
   return 0;
 }
 
+int is_node_addressable(uip_ipaddr_t *ipv6) {
+  return 1;
+}
+
 int
 is_in_subdodag(uip_ipaddr_t *ipv6) {
-  return is_id_addressable(node_id_from_ipaddr(ipv6)) && bloom_contains(&dbf, (unsigned char*)ipv6, 16);
+  return is_node_addressable(ipv6) && bloom_contains(&dbf, (unsigned char*)ipv6, 16);
 }
 
 static unsigned char ackbuf[3 + EXTRA_ACK_LEN] = {0x02, 0x00};

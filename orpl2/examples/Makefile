@@ -7,7 +7,7 @@ TARGET=sky
 WITH_UIP6=1
 UIP_CONF_IPV6=1
 CFLAGS+= -DUIP_CONF_IPV6_RPL
-PROJECT_SOURCEFILES += bloom.c simple-energest.c rpl-tools.c cc2420-softack.c contikimac-orpl.c anycast.c rpl-of-edc.c
+PROJECT_SOURCEFILES += bloom.c simple-energest.c rpl-tools.c cc2420-softack.c contikimac-orpl.c anycast.c rpl-of-edc.c deployment.c
 
 ifdef NO_WARNINGS
 	CFLAGS += -w
