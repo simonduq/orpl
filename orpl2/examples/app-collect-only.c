@@ -1,23 +1,10 @@
-#include "deployment.h"
 #include "contiki.h"
 #include "lib/random.h"
-#include "sys/ctimer.h"
-#include "sys/etimer.h"
-#include "net/uip.h"
-#include "net/uip-ds6.h"
-#include "net/uip-debug.h"
-#include "net/packetbuf.h"
-#include "net/rpl/rpl.h"
-#include "net/netstack.h"
 #include "anycast.h"
 #include "node-id.h"
-#include "bloom.h"
 #include "simple-energest.h"
 #include "simple-udp.h"
-#include "rpl-tools.h"
 #include "cc2420.h"
-#include <stdio.h>
-#include <string.h>
 
 #define SEND_INTERVAL   (60 * CLOCK_SECOND)
 #define UDP_PORT 1234
