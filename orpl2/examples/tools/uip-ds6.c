@@ -532,6 +532,8 @@ uip_ds6_select_src(uip_ipaddr_t *src, uip_ipaddr_t *dst)
 void
 uip_ds6_set_addr_iid(uip_ipaddr_t *ipaddr, uip_lladdr_t *lladdr)
 {
+  /* Use simple IPv6 addresses based on node-id instead of standard iid,
+   * enabling simpler logging and packet tracing. */
   uint16_t id = node_id_from_rimeaddr((const rimeaddr_t*)lladdr);
   orpl_set_addr_iid_from_id(ipaddr, id);
 }
