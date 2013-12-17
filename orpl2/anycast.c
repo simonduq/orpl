@@ -36,8 +36,12 @@
 
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)
 
+/* For tests. When set:
+ * - stop updating EDC after N minutes
+ * - start updating Bloom filters only after N+1 minutes
+ * - don't age Bloom filters */
 #ifndef FREEZE_TOPOLOGY
-#define FREEZE_TOPOLOGY 0
+#define FREEZE_TOPOLOGY 1
 #endif
 
 #if FREEZE_TOPOLOGY
@@ -398,7 +402,7 @@ orpl_trickle_callback(rpl_instance_t *instance) {
   if(orpl_up_only == 0) {
     check_neighbors();
 
-#if FREEZE_TOPOLOGY == 0
+#if !FREEZE_TOPOLOGY
     /* Bloom filter ageing */
     printf("Bloom: swapping\n");
     bloom_swap(&dbf);

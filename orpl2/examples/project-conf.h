@@ -121,12 +121,6 @@ typedef uint32_t rtimer_clock_t;
 #undef QUEUEBUF_CONF_NUM
 #define QUEUEBUF_CONF_NUM 4
 
-/* For tests. When set:
- * - stop updating EDC after N minutes
- * - start updating Bloom filters only after N+1 minutes
- * - don't age Bloom filters */
-#define FREEZE_TOPOLOGY 0
-
 #undef RPL_CONF_MOP
 #define RPL_CONF_MOP RPL_MOP_NO_DOWNWARD_ROUTES
 

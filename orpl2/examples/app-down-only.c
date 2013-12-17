@@ -29,7 +29,8 @@
  */
 /**
  * \file
- *         Example file using ORPL for a data collection.
+ *         Example file using ORPL for a data dissemination: periodic
+ *         unicasts from root to other nodes in a round-robin fashion.
  *         Enables logging as used in the ORPL SenSyS'13 paper.
  *         Can be deployed in the Indriya or Twist testbeds.
  *
@@ -44,14 +45,15 @@
 #include "simple-udp.h"
 #include "cc2420.h"
 
-#define SEND_INTERVAL   (60 * CLOCK_SECOND)
+#define SEND_INTERVAL   (4 * CLOCK_SECOND)
 #define UDP_PORT 1234
+#define TARGET_REACHABLE_RATIO 80
 
 static char buf[APP_PAYLOAD_LEN];
 static struct simple_udp_connection unicast_connection;
 
 /*---------------------------------------------------------------------------*/
-PROCESS(unicast_sender_process, "ORPL -- Collect-only Application");
+PROCESS(unicast_sender_process, "ORPL -- Down-only Application");
 AUTOSTART_PROCESSES(&unicast_sender_process);
 /*---------------------------------------------------------------------------*/
 static void
@@ -88,6 +90,28 @@ void app_send_to(uint16_t id) {
   cnt++;
 }
 /*---------------------------------------------------------------------------*/
+int check_reachable_count() {
+  int i;
+  int count = 0;
+
+  for(i=0; i<get_n_nodes(); i++) {
+    uip_ipaddr_t dest_ipaddr;
+    uint8_t id = get_node_id_from_index(i);
+    if(id == ROOT_ID) {
+      continue;
+    }
+    set_ipaddr_from_id(&dest_ipaddr, id);
+    if(is_in_subdodag(&dest_ipaddr)) {
+      count++;
+    }
+  }
+
+  if(count != get_n_nodes()-1) {
+    printf("App: nodes reachable: %u/%u\n", count, get_n_nodes()-1 /* exclude sink */);
+  }
+  return count >= ((get_n_nodes()-1) * (TARGET_REACHABLE_RATIO)) / 100;
+}
+/*---------------------------------------------------------------------------*/
 PROCESS_THREAD(unicast_sender_process, ev, data)
 {
   static struct etimer periodic_timer;
@@ -110,21 +134,25 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
   printf("App: %u starting\n", node_id);
 
   deployment_init(&global_ipaddr);
-  anycast_init(&global_ipaddr, node_id == ROOT_ID, 1);
+  anycast_init(&global_ipaddr, node_id == ROOT_ID, 0);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 
   if(node_id == ROOT_ID) {
     NETSTACK_RDC.off(1);
-  } else {
+    etimer_set(&send_timer, 180 * CLOCK_SECOND);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&send_timer));
     while(1) {
       etimer_set(&send_timer, random_rand() % (SEND_INTERVAL));
       PROCESS_WAIT_UNTIL(etimer_expired(&send_timer));
 
-      if(e2e_edc != 0xffff) {
-        app_send_to(ROOT_ID);
-      } else {
-        printf("App: not in DODAG\n");
+      if(check_reachable_count()) {
+        static uint16_t target_id;
+        do {
+          get_node_id_from_index(target_id++);
+          target_id %= get_n_nodes();
+        } while (target_id == ROOT_ID);
+        app_send_to(target_id);
       }
 
       PROCESS_WAIT_UNTIL(etimer_expired(&periodic_timer));

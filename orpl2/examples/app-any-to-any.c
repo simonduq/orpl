@@ -29,7 +29,10 @@
  */
 /**
  * \file
- *         Example file using ORPL for a data collection.
+ *         Example file using ORPL for a any-to-any routing: the root and all
+ *         nodes with an even node-id send a ping periodically to another node
+ *         (which also must be root or have even node-id). Upon receiving a ping,
+ *         nodes answer with a poing.
  *         Enables logging as used in the ORPL SenSyS'13 paper.
  *         Can be deployed in the Indriya or Twist testbeds.
  *
@@ -49,43 +52,79 @@
 
 static char buf[APP_PAYLOAD_LEN];
 static struct simple_udp_connection unicast_connection;
+static uint16_t current_cnt = 0;
+
+static const uint16_t any_to_any_list[] = {
+#if IN_INDRIYA
+  20, 12, 28, 50, 56, 72, 92, 94, 112,
+#elif IN_COOJA
+  1, 2, 4, 6, 8,
+#endif
+  0
+};
+
+static int
+is_id_in_any_to_any(uint16_t id)
+{
+  const uint16_t *curr = any_to_any_list;
+  while(*curr != 0) {
+    if(*curr == id) {
+      return 1;
+    }
+    curr++;
+  }
+  return 0;
+}
 
 /*---------------------------------------------------------------------------*/
 PROCESS(unicast_sender_process, "ORPL -- Collect-only Application");
 AUTOSTART_PROCESSES(&unicast_sender_process);
 /*---------------------------------------------------------------------------*/
+void app_send_to(uint16_t id, int ping, uint32_t seqno);
 static void
 receiver(struct simple_udp_connection *c,
          const uip_ipaddr_t *sender_addr,
          uint16_t sender_port,
          const uip_ipaddr_t *receiver_addr,
          uint16_t receiver_port,
-         const uint8_t *data,
+         const uint8_t *dataptr,
          uint16_t datalen)
 {
-  ORPL_LOG_FROM_APPDATAPTR((struct app_data *)data, "App: received");
+  struct app_data data;
+  appdata_copy(&data, (struct app_data*)dataptr);
+  if(data.ping) {
+    ORPL_LOG_FROM_APPDATAPTR((struct app_data *)dataptr, "App: received ping");
+  } else {
+    ORPL_LOG_FROM_APPDATAPTR((struct app_data *)dataptr, "App: received pong");
+  }
+  if(data.ping) {
+    app_send_to(data.src, 0, data.seqno | 0x8000l);
+  }
 }
 /*---------------------------------------------------------------------------*/
-void app_send_to(uint16_t id) {
-
-  static unsigned int cnt;
+void
+app_send_to(uint16_t id, int ping, uint32_t seqno)
+{
   struct app_data data;
   uip_ipaddr_t dest_ipaddr;
 
-  data.seqno = ((uint32_t)node_id << 16) + cnt;
+  data.seqno = seqno;
   data.src = node_id;
   data.dest = id;
   data.hop = 0;
   data.fpcount = 0;
+  data.ping = ping;
 
   set_ipaddr_from_id(&dest_ipaddr, id);
 
-  ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending");
+  if(ping) {
+    ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending ping");
+  } else {
+    ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending pong");
+  }
 
   *((struct app_data*)buf) = data;
   simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &dest_ipaddr);
-
-  cnt++;
 }
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(unicast_sender_process, ev, data)
@@ -110,21 +149,38 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
   printf("App: %u starting\n", node_id);
 
   deployment_init(&global_ipaddr);
-  anycast_init(&global_ipaddr, node_id == ROOT_ID, 1);
+  anycast_init(&global_ipaddr, node_id == ROOT_ID, 0);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 
+  printf("App: %u starting\n", node_id);
+
   if(node_id == ROOT_ID) {
     NETSTACK_RDC.off(1);
-  } else {
+  } else if(is_id_in_any_to_any(get_node_id())) {
+    etimer_set(&send_timer, 180 * CLOCK_SECOND);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&send_timer));
+
+    etimer_set(&periodic_timer, SEND_INTERVAL);
+
+    static uint16_t index;
+    index = random_rand();
+
     while(1) {
       etimer_set(&send_timer, random_rand() % (SEND_INTERVAL));
       PROCESS_WAIT_UNTIL(etimer_expired(&send_timer));
 
-      if(e2e_edc != 0xffff) {
-        app_send_to(ROOT_ID);
-      } else {
-        printf("App: not in DODAG\n");
+      static uint16_t target_id;
+      do {
+        get_node_id_from_index(target_id++);
+        target_id %= get_n_nodes();
+      } while (target_id == node_id || !is_id_in_any_to_any(target_id));
+
+      if(target_id < node_id || target_id == ROOT_ID) {
+        /* After finding an addressable node, send only if destination has lower ID
+         * otherwise, next attempt will be at the next period */
+        app_send_to(target_id, 1, ((uint32_t)node_id << 16) + current_cnt);
+        current_cnt++;
       }
 
       PROCESS_WAIT_UNTIL(etimer_expired(&periodic_timer));
