@@ -6,12 +6,10 @@
 #include "net/mac/frame802154.h"
 #include "net/uip-ds6.h"
 #include "orpl-log.h"
-#include "bloom.h"
+#include "routing-set.h"
 
 #define EDC_DIVISOR 128
 #define EDC_TICKS_TO_METRIC(edc) (uint16_t)((edc) / (CONTIKIMAC_CONF_CYCLE_TIME / EDC_DIVISOR))
-
-extern double_bf dbf;
 
 #define EXTRA_ACK_LEN 10
 
@@ -31,7 +29,7 @@ extern uint16_t hbh_edc;
 extern uint16_t e2e_edc;
 extern uint32_t anycast_count_incomming;
 extern uint32_t anycast_count_acked;
-extern uint32_t bloom_merged_count;
+extern uint32_t routing_set_merged_count;
 extern int sending_bloom;
 extern int is_edc_root;
 

@@ -12,7 +12,7 @@
 #endif
 #include "net/uip-debug.h"
 #include "net/uip-ds6.h"
-#include "bloom.h"
+#include "routing-set.h"
 #include "node-id.h"
 #include "orpl-log.h"
 #include "random.h"
@@ -38,8 +38,8 @@
 
 /* For tests. When set:
  * - stop updating EDC after N minutes
- * - start updating Bloom filters only after N+1 minutes
- * - don't age Bloom filters */
+ * - start updating Bloom sets only after N+1 minutes
+ * - don't age Bloom sets */
 #ifndef FREEZE_TOPOLOGY
 #define FREEZE_TOPOLOGY 1
 #endif
@@ -76,7 +76,7 @@ struct bloom_broadcast_s {
    * and we need to way to check whether incoming data is a bloom broadcast or not */
   uint16_t rank;
   union {
-    bloom_filter filter;
+    routing_set filter;
     uint8_t padding[64];
   };
 };
@@ -100,11 +100,10 @@ rimeaddr_t anycast_addr_nbr = {.u8 = {0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 
 rimeaddr_t anycast_addr_recover = {.u8 = {0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd}};
 uint16_t hbh_edc = EDC_DIVISOR;
 uint16_t e2e_edc = 0xffff;
-uint32_t bloom_merged_count = 0;
+uint32_t routing_set_merged_count = 0;
 uint32_t anycast_count_incomming;
 uint32_t anycast_count_acked;
-/* The Bloom Filter representing the set of nodes in the subdodag */
-double_bf dbf;
+
 int sending_bloom = 0;
 int is_edc_root = 0;
 
@@ -219,7 +218,7 @@ void orpl_print_ranks() {
   }
   printf("Ackcount: end\n");
 
-  bloom_print(&dbf);
+  routing_set_print();
 
   uint16_t i;
   int count = 0;
@@ -300,16 +299,16 @@ bloom_received(struct bloom_broadcast_s *data)
 
   if(orpl_up_only == 0) {
     uip_ipaddr_t sender_ipaddr;
-    /* Merge Bloom filters */
+    /* Merge Bloom sets */
     if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > e2e_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
-      int bit_count_before = bloom_count_bits(&dbf);
+      int bit_count_before = routing_set_count_bits();
       if(is_node_addressable(&sender_ipaddr)) {
-        bloom_insert(&dbf, (unsigned char*)&sender_ipaddr, 16);
-        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, bloom_count_bits(&dbf), "bloom received");
+        routing_set_insert(&sender_ipaddr);
+        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, routing_set_count_bits(), "bloom received");
       }
-      bloom_merge(&dbf, ((struct bloom_broadcast_s*)data)->filter, neighbor_id);
-      int bit_count_after = bloom_count_bits(&dbf);
+      routing_set_merge(((struct bloom_broadcast_s*)data)->filter, neighbor_id);
+      int bit_count_after = routing_set_count_bits();
       printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after);
       if(curr_instance && bit_count_after != bit_count_before) {
         printf("Anycast: reset DIO timer (bloom received)\n");
@@ -317,7 +316,7 @@ bloom_received(struct bloom_broadcast_s *data)
         //      rpl_reset_dio_timer(curr_instance);
         bloom_request_broadcast();
       }
-      bloom_merged_count++;
+      routing_set_merged_count++;
     }
     update_annotations();
   }
@@ -339,9 +338,9 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
     set_ipaddr_from_id(&neighbor_ipaddr, neighbor_id);
     if(test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       if(is_node_addressable(&neighbor_ipaddr)) {
-        int bit_count_before = bloom_count_bits(&dbf);
-        bloom_insert(&dbf, (unsigned char*)&neighbor_ipaddr, 16);
-        int bit_count_after = bloom_count_bits(&dbf);
+        int bit_count_before = routing_set_count_bits();
+        routing_set_insert(&neighbor_ipaddr);
+        int bit_count_after = routing_set_count_bits();
         printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after, message);
       }
     }
@@ -369,7 +368,7 @@ void bloom_do_broadcast(void *ptr) {
     last_broadcasted_rank = e2e_edc;
     bloom_broadcast.magic = BLOOM_MAGIC;
     bloom_broadcast.rank = e2e_edc;
-    memcpy(bloom_broadcast.filter, &dbf.filters[dbf.current], sizeof(bloom_filter));
+    memcpy(bloom_broadcast.filter, *routing_set_get_active(), sizeof(routing_set));
     sending_bloom = 1;
 
     printf("Bloom: do broadcast %u\n", bloom_broadcast.rank);
@@ -405,12 +404,12 @@ orpl_trickle_callback(rpl_instance_t *instance) {
 #if !FREEZE_TOPOLOGY
     /* Bloom filter ageing */
     printf("Bloom: swapping\n");
-    bloom_swap(&dbf);
+    routing_set_swap();
 #endif
 
     bloom_request_broadcast();
 
-    //  int bit_count_current = bloom_count_bits(&dbf);
+    //  int bit_count_current = routing_set_count_bits();
     //  if(curr_instance && bit_count_current != bit_count_last) {
     //    printf("Anycast: reset DIO timer (trickle callback)\n");
     //    rpl_reset_dio_timer(curr_instance);
@@ -437,7 +436,7 @@ void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
 	ANNOTATE("#A color=red\n");
     e2e_edc = 0;
   }
-  bloom_init(&dbf);
+  routing_set_init();
 //  uip_create_linklocal_allnodes_mcast(&bloom_addr);
 //  simple_udp_register(&bloom_connection, UDP_PORT,
 //                        NULL, UDP_PORT,
@@ -737,7 +736,7 @@ is_reachable_neighbor(uip_ipaddr_t *ipv6) {
 
 int
 is_in_subdodag(uip_ipaddr_t *ipv6) {
-  return is_node_addressable(ipv6) && bloom_contains(&dbf, (unsigned char*)ipv6, 16);
+  return is_node_addressable(ipv6) && routing_set_contains(ipv6);
 }
 
 static unsigned char ackbuf[3 + EXTRA_ACK_LEN] = {0x02, 0x00};
