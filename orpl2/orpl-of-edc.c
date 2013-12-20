@@ -1,6 +1,6 @@
 #include "net/rpl/rpl-private.h"
 
-#define DEBUG DEBUG_PRINT | DEBUG_ANNOTATE
+#define DEBUG DEBUG_ANNOTATE
 #include "net/uip-debug.h"
 #include "anycast.h"
 #include "deployment.h"
@@ -12,14 +12,6 @@ static rpl_parent_t *best_parent(rpl_parent_t *, rpl_parent_t *);
 static rpl_dag_t *best_dag(rpl_dag_t *, rpl_dag_t *);
 static rpl_rank_t calculate_rank(rpl_parent_t *, rpl_rank_t);
 static void update_metric_container(rpl_instance_t *);
-
-static uint32_t curr_ackcount_edc_sum;
-static uint32_t curr_ackcount_sum;
-uint32_t broadcast_count = 0;
-extern rpl_dag_t *curr_dag;
-extern rpl_instance_t *curr_instance;
-extern uint16_t last_broadcasted_rank;
-#define RANK_MAX_CHANGE (2*EDC_DIVISOR)
 
 rpl_of_t rpl_of_edc = {
   reset,
@@ -35,157 +27,62 @@ rpl_of_t rpl_of_edc = {
 #define EDC_SCALE   100
 #define EDC_ALPHA   90
 
-static void
-start_forwarder_set(int verbose) {
-  curr_ackcount_sum = 0;
-  curr_ackcount_edc_sum = 0;
+/* Current hop-by-hop EDC, which is the expected strobe duration before getting
+ * an ack from a parent. We maintain this as a moving average. */
+static uint16_t hbh_edc = EDC_DIVISOR;
 
-  if(verbose) {
-    printf("EDC: starting calculation. hbh_edc: %u, e2e_edc %u\n", hbh_edc, e2e_edc);
-  }
-  e2e_edc = 0xffff;
-}
+/* The size of the forwarder set and neighbor set.
+ * Both are needed in some other parts of ORPL. */
+int forwarder_set_size = 0;
+int neighbor_set_size = 0;
 
+/* Utility function for computing the forwarder set. Adds a parent and returns the
+ * resulting EDC */
 static int
-add_to_forwarder_set(rpl_parent_t *curr_min, uint16_t curr_min_rank, uint16_t ackcount, int verbose) {
-  uint16_t tentative;
+add_to_forwarder_set(rpl_parent_t *curr_p, rpl_rank_t curr_p_rank, uint16_t ackcount,
+    uint32_t *curr_ackcount_sum, uint32_t *curr_ackcount_edc_sum)
+{
+  uint16_t tentative_edc;
   uint32_t total_tx_count;
 
-  if(ackcount > broadcast_count) {
-    ackcount = broadcast_count;
+  if(ackcount > orpl_broadcast_count) {
+    ackcount = orpl_broadcast_count;
   }
 
-  total_tx_count = broadcast_count;
+  total_tx_count = orpl_broadcast_count;
   if(total_tx_count == 0) {
     total_tx_count = 1;
   }
 
-  curr_ackcount_sum += ackcount;
-  curr_ackcount_edc_sum += ackcount * curr_min_rank;
+  *curr_ackcount_sum += ackcount;
+  *curr_ackcount_edc_sum += ackcount * curr_p_rank;
 
-  uint32_t A = hbh_edc * total_tx_count / curr_ackcount_sum;
-  uint32_t B = curr_ackcount_edc_sum / curr_ackcount_sum;
-  if(verbose) {
-    printf("-- A: %5lu, B: %5lu (%u/%lu) ",
-          A,
-          B,
-          ackcount,
-          total_tx_count
-    );
-  }
+  /* The two main components of EDC: A, the cost of forwarding to any
+   * parent, B the weighted mean EDC of the forwarder set */
+  uint32_t A = hbh_edc * total_tx_count / *curr_ackcount_sum;
+  uint32_t B = *curr_ackcount_edc_sum / *curr_ackcount_sum;
+  PRINTF("-- A: %5lu, B: %5lu (%u/%lu) ",
+      A,
+      B,
+      ackcount,
+      total_tx_count
+  );
 
-  tentative = A + B + EDC_W;
+  /* Finally add W to EDC (cost of forwarding) */
+  tentative_edc = A + B + EDC_W;
 
-  if(verbose) {
-    printf("EDC %5u ", tentative);
-  }
-  if(tentative < e2e_edc) {
-    e2e_edc = tentative;
-    return 1;
-  } else {
-    return 0;
-  }
-}
+  PRINTF("EDC %5u ", tentative_edc);
 
-/* Compute forwarder set with minimal EDC */
-void
-update_e2e_edc(int verbose) {
-
-  if(orpl_is_topology_frozen()) {
-    return;
-  }
-
-  static uint16_t prev_e2e_edc;
-  prev_e2e_edc = e2e_edc;
-  forwarder_set_size = 0;
-  neighbor_set_size = 0;
-
-  if(is_edc_root) {
-    e2e_edc = 0;
-  } else {
-    rpl_parent_t *p;
-    int index;
-
-    int curr_index = 0;
-    rpl_parent_t *curr_min;
-    uint16_t curr_min_rank = 0xffff;
-    uint16_t curr_min_ackcount = 0xffff;
-
-    int prev_index = -1;
-    rpl_parent_t *prev_min = NULL;
-    uint16_t prev_min_rank = 0;
-
-    start_forwarder_set(verbose);
-
-    /* Loop on the parents ordered by increasing rank */
-    do {
-      curr_min = NULL;
-
-      for(p = nbr_table_head(rpl_parents), index = 0;
-            p != NULL;
-            p = nbr_table_next(rpl_parents, p), index++) {
-        uint16_t rank = p->rank;
-        uint16_t ackcount = p->bc_ackcount;
-
-        if(rank != 0xffff
-            && ackcount != 0
-            && (curr_min == NULL || rank < curr_min_rank)
-            && (rank > prev_min_rank || (rank == prev_min_rank && index > prev_index))
-        ) {
-          curr_index = index;
-          curr_min = p;
-          curr_min_rank = rank;
-          curr_min_ackcount = ackcount;
-        }
-      }
-      /* Here, curr_min contains the current p in our ordered lookup */
-      if(curr_min) {
-        uint16_t curr_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents,curr_min));
-        if(verbose) printf("EDC: -> node %3u rank: %5u ", curr_id, curr_min_rank);
-        neighbor_set_size++;
-        if(add_to_forwarder_set(curr_min, curr_min_rank, curr_min_ackcount, verbose) == 1) {
-          forwarder_set_size++;
-          if(verbose) printf("*\n");
-          ANNOTATE("#L %u 1\n", curr_id);
-        } else {
-          if(verbose) printf("\n");
-          ANNOTATE("#L %u 0\n", curr_id);
-        }
-        prev_index = curr_index;
-        prev_min = curr_min;
-        prev_min_rank = curr_min_rank;
-      }
-    } while(curr_min != NULL);
-
-    if(verbose) printf("EDC: final %u\n", e2e_edc);
-  }
-
-  if(e2e_edc != prev_e2e_edc) {
-    ANNOTATE("#A rank=%u.%u\n", e2e_edc/EDC_DIVISOR,
-        (10 * (e2e_edc % EDC_DIVISOR)) / EDC_DIVISOR);
-  }
-
-  if(curr_dag) {
-    curr_dag->rank = e2e_edc;
-  }
-
-  /* Reset DIO timer if the rank changed significantly */
-  if(curr_instance && last_broadcasted_rank != 0xffff &&
-      (
-      (last_broadcasted_rank > e2e_edc && last_broadcasted_rank - e2e_edc > RANK_MAX_CHANGE)
-      ||
-      (e2e_edc > last_broadcasted_rank && e2e_edc - last_broadcasted_rank > RANK_MAX_CHANGE)
-      )) {
-    printf("Anycast: reset DIO timer (rank changed from %u to %u)\n", last_broadcasted_rank, e2e_edc);
-    last_broadcasted_rank = e2e_edc;
-    rpl_reset_dio_timer(curr_instance);
-  }
-
+  return tentative_edc;
 }
 
 static void
 reset(rpl_dag_t *sag)
 {
+  PRINTF("ORPL: reset EDC\n");
+  hbh_edc = EDC_DIVISOR;
+  forwarder_set_size = 0;
+  neighbor_set_size = 0;
 }
 
 /* Called after transmitting to a neighbor */
@@ -202,28 +99,122 @@ neighbor_link_callback(rpl_parent_t *parent, int known, int edc)
   if(packetbuf_attr(PACKETBUF_ATTR_GOING_UP)) {
     uint16_t curr_hbh_edc = packetbuf_attr(PACKETBUF_ATTR_EDC); /* The strobe time for this packet */
     uint16_t weighted_curr_hbh_edc;
-    uint16_t hbh_edc_old = hbh_edc;
+    uint16_t hbh_edc_prev = hbh_edc;
     if(curr_hbh_edc == 0xffff) { /* This was NOACK, use a more aggressive alpha (of 50%) */
       weighted_curr_hbh_edc = EDC_DIVISOR * 2 * forwarder_set_size;
-      hbh_edc = (hbh_edc * (EDC_SCALE/2) + weighted_curr_hbh_edc * (EDC_SCALE/2)) / EDC_SCALE;
+      hbh_edc = (hbh_edc_prev * (EDC_SCALE/2) + weighted_curr_hbh_edc * (EDC_SCALE/2)) / EDC_SCALE;
     } else {
       weighted_curr_hbh_edc = curr_hbh_edc * forwarder_set_size;
-      hbh_edc = ((hbh_edc * EDC_ALPHA) + (weighted_curr_hbh_edc * (EDC_SCALE-EDC_ALPHA))) / EDC_SCALE;
+      hbh_edc = ((hbh_edc_prev * EDC_ALPHA) + (weighted_curr_hbh_edc * (EDC_SCALE-EDC_ALPHA))) / EDC_SCALE;
     }
 
-    PRINTF("EDC: updated hbh_edc %u -> %u (%u %u)\n", hbh_edc_old, hbh_edc, curr_hbh_edc, weighted_curr_hbh_edc);
+    PRINTF("EDC: updated hbh_edc %u -> %u (%u %u)\n", hbh_edc_prev, hbh_edc, curr_hbh_edc, weighted_curr_hbh_edc);
 
-    /* Calculate end-to-end EDC */
-    update_e2e_edc(1);
+    /* Calculate EDC and update rank*/
+    if(parent && parent->dag) {
+      parent->dag->rank = calculate_rank(parent, 0);
+    }
   }
 }
 
 static rpl_rank_t
-calculate_rank(rpl_parent_t *p, rpl_rank_t base_rank)
+calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
 {
-  printf("EDC: calculate rank\n");
-  update_e2e_edc(0);
-  return e2e_edc;
+  rpl_rank_t edc = 0xffff;
+  rpl_rank_t prev_edc = orpl_current_edc();
+  /* Counts the total number of ACKs received from nodes in the current set */
+  uint32_t curr_ackcount_sum = 0;
+  /* Counts the total number of EDC*ACKs received from nodes in the current set */
+  uint32_t curr_ackcount_edc_sum = 0;
+  /* Variables used for looping over parents and building the forwarder set*/
+  rpl_parent_t *p, *curr_p;
+  int index = 0, curr_index = 0;
+  uint16_t curr_p_rank = 0xffff;
+  uint16_t curr_p_ackcount = 0xffff;
+
+  int prev_index = -1;
+  rpl_parent_t *prev_min = NULL;
+  uint16_t prev_min_rank = 0;
+
+  if(orpl_is_topology_frozen()) {
+    return prev_edc;
+  }
+
+  if(is_edc_root) {
+    return 0;
+  }
+
+  forwarder_set_size = 0;
+  neighbor_set_size = 0;
+
+  PRINTF("ORPL: starting EDC calculation. hbh_edc: %u, e2e_edc %u\n", hbh_edc, orpl_current_edc());
+
+  /* Loop over the parents ordered by increasing rank, try to insert
+   * them in the routing set until EDC does not improve. This is as
+   * described in the IPSN'12 paper on ORW (upon which ORPL is built) */
+  do {
+    curr_p = NULL;
+
+    /* This nested for loop finds the next parent for the do loop,
+     * such as we get the parents by increasing rank */
+    for(p = nbr_table_head(rpl_parents), index = 0;
+        p != NULL;
+        p = nbr_table_next(rpl_parents, p), index++) {
+      uint16_t rank = p->rank;
+      uint16_t ackcount = p->bc_ackcount;
+
+      if(rank != 0xffff
+          && ackcount != 0
+          && (curr_p == NULL || rank < curr_p_rank)
+          && (rank > prev_min_rank || (rank == prev_min_rank && index > prev_index))
+      ) {
+        curr_index = index;
+        curr_p = p;
+        curr_p_rank = rank;
+        curr_p_ackcount = ackcount;
+      }
+    }
+
+    /* Here, curr_p contains the current parent in our ordered lookup */
+    if(curr_p) {
+      uint16_t curr_id = rpl_get_parent_ipaddr(curr_p)->u8[sizeof(uip_ipaddr_t) - 1];
+      rpl_rank_t tentative_edc;
+
+      PRINTF("ORPL: EDC -> node %3u rank: %5u ", curr_id, curr_p_rank);
+
+      tentative_edc = add_to_forwarder_set(curr_p, curr_p_rank, curr_p_ackcount,
+                &curr_ackcount_sum, &curr_ackcount_edc_sum);
+
+      neighbor_set_size++;
+
+      if(tentative_edc < edc) {
+        /* The parent is now part of the forwarder set */
+        edc = tentative_edc;
+        forwarder_set_size++;
+        PRINTF("*\n");
+        ANNOTATE("#L %u 1\n", curr_id);
+      } else {
+        /* The parent is not part of the forwarder set. This means next parents won't be
+         * part of the set either. */
+        PRINTF("\n");
+        ANNOTATE("#L %u 0\n", curr_id);
+      }
+      prev_index = curr_index;
+      prev_min = curr_p;
+      prev_min_rank = curr_p_rank;
+    }
+  } while(curr_p != NULL);
+
+  PRINTF("ORPL: final edc %u\n", edc);
+
+  if(edc != prev_edc) {
+    ANNOTATE("#A rank=%u.%u\n", edc/EDC_DIVISOR,
+        (10 * (edc % EDC_DIVISOR)) / EDC_DIVISOR);
+  }
+
+  orpl_update_edc(edc);
+
+  return edc;
 }
 
 static rpl_dag_t *
@@ -250,26 +241,6 @@ best_parent(rpl_parent_t *p1, rpl_parent_t *p2)
 static void
 update_metric_container(rpl_instance_t *instance)
 {
-  rpl_dag_t *dag;
-
-  instance->mc.flags = RPL_DAG_MC_FLAG_P;
-  instance->mc.aggr = RPL_DAG_MC_AGGR_ADDITIVE;
-  instance->mc.prec = 0;
-
-  dag = instance->current_dag;
-
-  if (!dag->joined) {
-    /* We should probably do something here */
-    return;
-  }
-
-  instance->mc.type = RPL_DAG_MC;
-  instance->mc.length = sizeof(instance->mc.obj.etx);
-  instance->mc.obj.etx = e2e_edc;
-
-  PRINTF("RPL: My path EDC to the root is %u (%u.%02u)\n",
-      e2e_edc,
-      e2e_edc / EDC_DIVISOR,
-      (e2e_edc % EDC_DIVISOR * 100) / EDC_DIVISOR
-  );
+  /* We don't use any metric container (we only
+   * use the rank field of DIO messages) */
 }

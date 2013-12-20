@@ -645,7 +645,7 @@ tcpip_ipv6_output(void)
       } else if(is_in_subdodag(&UIP_IP_BUF->destipaddr) && !blacklist_contains(data.seqno)) {
         ORPL_LOG_FROM_UIP("Tcpip: fw down");
         anycast_addr = &anycast_addr_down;
-      } else if(e2e_edc != 0){
+      } else if(orpl_is_root() == 0){
         ORPL_LOG_FROM_UIP("Tcpip: fw up");
         anycast_addr = &anycast_addr_up;
       } else { /* We are the root and need to route upwards =>

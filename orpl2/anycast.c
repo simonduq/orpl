@@ -55,16 +55,30 @@
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 #define BLOOM_MAGIC 0x83d9
+#define RANK_MAX_CHANGE (2*EDC_DIVISOR)
+
+uint32_t orpl_broadcast_count = 0;
 
 static void orpl_softack_acked_callback(const uint8_t *buf, uint8_t len);
 static void orpl_softack_input_callback(const uint8_t *buf, uint8_t len, uint8_t **ackbufptr, uint8_t *acklen);
 void rpl_link_neighbor_callback(const rimeaddr_t *addr, int status, int numtx);
 
 
-int forwarder_set_size = 0;
-int neighbor_set_size = 0;
 static rtimer_clock_t start_time;
 static uip_ipaddr_t prefix;
+
+int
+orpl_is_root()
+{
+  return orpl_current_edc() == 0;
+}
+
+rpl_rank_t
+orpl_current_edc()
+{
+  rpl_dag_t *dag = rpl_get_any_dag();
+  return dag == NULL ? 0xffff : dag->rank;
+}
 
 int time_elapsed() {
   return (RTIMER_NOW()-start_time)/(RTIMER_ARCH_SECOND*60);
@@ -110,16 +124,12 @@ rimeaddr_t anycast_addr_up = {.u8 = {0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0
 rimeaddr_t anycast_addr_down = {.u8 = {0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb}};
 rimeaddr_t anycast_addr_nbr = {.u8 = {0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc}};
 rimeaddr_t anycast_addr_recover = {.u8 = {0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd}};
-uint16_t hbh_edc = EDC_DIVISOR;
-uint16_t e2e_edc = 0xffff;
 uint32_t routing_set_merged_count = 0;
 uint32_t anycast_count_incomming;
 uint32_t anycast_count_acked;
 
 int sending_bloom = 0;
 int is_edc_root = 0;
-
-extern uint32_t broadcast_count;
 
 static struct bloom_broadcast_s bloom_broadcast;
 static struct acked_down acked_down[ACKED_DOWN_SIZE];
@@ -182,6 +192,7 @@ int acked_down_contains(uint32_t seqno, uint16_t id) {
 }
 
 void orpl_print_ranks() {
+  rpl_rank_t curr_edc = orpl_current_edc();
   rpl_parent_t *p;
   printf("Ackcount: start\n");
   for(p = nbr_table_head(rpl_parents);
@@ -196,8 +207,8 @@ void orpl_print_ranks() {
       uip_debug_lladdr_print((const uip_lladdr_t *)addr);
       printf("\n");
     } else {
-      printf("Ackcount: [%u] %u/%lu (%u %u -> %u) ->", neighbor_id, count, broadcast_count, e2e_edc, neighbor_rank,
-          (neighbor_rank != 0xffff && neighbor_rank > e2e_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD))?1:0);
+      printf("Ackcount: [%u] %u/%lu (%u %u -> %u) ->", neighbor_id, count, orpl_broadcast_count, curr_edc, neighbor_rank,
+          (neighbor_rank != 0xffff && neighbor_rank > curr_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD))?1:0);
       uip_debug_lladdr_print((const uip_lladdr_t *)addr);
             printf("\n");
     }
@@ -233,9 +244,9 @@ void orpl_print_ranks() {
 
 int test_prr(uint16_t count, uint16_t threshold) {
   if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
-    return time_elapsed() > UPDATE_BLOOM_MIN_TIME && broadcast_count >= 4 && (100*count/broadcast_count >= threshold);
+    return time_elapsed() > UPDATE_BLOOM_MIN_TIME && orpl_broadcast_count >= 4 && (100*count/orpl_broadcast_count >= threshold);
   } else {
-    return broadcast_count >= 4 && (100*count/broadcast_count >= threshold);
+    return orpl_broadcast_count >= 4 && (100*count/orpl_broadcast_count >= threshold);
   }
 }
 
@@ -284,18 +295,19 @@ bloom_received(struct bloom_broadcast_s *data)
   }
 
   if(orpl_up_only == 0) {
+    rpl_rank_t curr_edc = orpl_current_edc();
     uip_ipaddr_t sender_ipaddr;
     /* Merge Bloom sets */
-    if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > e2e_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
+    if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > curr_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
       int bit_count_before = routing_set_count_bits();
       if(is_node_addressable(&sender_ipaddr)) {
         routing_set_insert(&sender_ipaddr);
-        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, routing_set_count_bits(), "bloom received");
+        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, routing_set_count_bits(), "bloom received");
       }
       routing_set_merge(((struct bloom_broadcast_s*)data)->filter, neighbor_id);
       int bit_count_after = routing_set_count_bits();
-      printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after);
+      printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after);
       if(curr_instance && bit_count_after != bit_count_before) {
         printf("Anycast: reset DIO timer (bloom received)\n");
         //      bit_count_last = bit_count_after;
@@ -311,13 +323,15 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
   uip_ipaddr_t neighbor_ipaddr;
   uint16_t neighbor_id = node_id_from_rimeaddr(neighbor_addr);
   uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)neighbor_addr, 0xffff);
+  rpl_rank_t curr_edc = orpl_current_edc();
   if(count == 0xffff) {
     return;
   }
   uint16_t neighbor_rank = rpl_get_parent_rank_default((uip_lladdr_t *)neighbor_addr, 0xffff);
+  printf("Bloom: nbr rank %u\n", neighbor_rank);
   if(neighbor_rank != 0xffff
 #if (ALL_NEIGHBORS_IN_FILTER==0)
-      && neighbor_rank > (e2e_edc + EDC_W)
+      && neighbor_rank > (curr_edc + EDC_W)
 #endif
       ) {
     set_ipaddr_from_id(&neighbor_ipaddr, neighbor_id);
@@ -326,7 +340,7 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
         int bit_count_before = routing_set_count_bits();
         routing_set_insert(&neighbor_ipaddr);
         int bit_count_after = routing_set_count_bits();
-        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, e2e_edc, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after, message);
+        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after, message);
       }
     }
   }
@@ -348,10 +362,11 @@ void bloom_do_broadcast(void *ptr) {
     printf("Bloom: requesting broadcast\n");
     ctimer_set(&broadcast_bloom_timer, random_rand() % (32 * CLOCK_SECOND), bloom_do_broadcast, NULL);
   } else {
+    rpl_rank_t curr_edc = orpl_current_edc();
     /* Broadcast filter */
-    last_broadcasted_rank = e2e_edc;
+    last_broadcasted_rank = curr_edc;
     bloom_broadcast.magic = BLOOM_MAGIC;
-    bloom_broadcast.rank = e2e_edc;
+    bloom_broadcast.rank = curr_edc;
     memcpy(bloom_broadcast.filter, *routing_set_get_active(), sizeof(routing_set));
     sending_bloom = 1;
 
@@ -406,6 +421,37 @@ orpl_trickle_callback(rpl_instance_t *instance) {
   rpl_recalculate_ranks();
 }
 
+void
+orpl_update_edc(rpl_rank_t edc)
+{
+  rpl_rank_t curr_edc = orpl_current_edc();
+  rpl_dag_t *dag = rpl_get_any_dag();
+
+  if(dag) {
+    dag->rank = edc;
+  }
+  printf("ORPL: updating rank %p %u\n", dag, dag->rank);
+
+  /* Reset DIO timer if the rank changed significantly */
+  if(curr_instance && last_broadcasted_rank != 0xffff &&
+      (
+      (last_broadcasted_rank > curr_edc && last_broadcasted_rank - curr_edc > RANK_MAX_CHANGE)
+      ||
+      (curr_edc > last_broadcasted_rank && curr_edc - last_broadcasted_rank > RANK_MAX_CHANGE)
+      )) {
+    PRINTF("ORPL: reset DIO timer (rank changed from %u to %u)\n", last_broadcasted_rank, curr_edc);
+    last_broadcasted_rank = curr_edc;
+    rpl_reset_dio_timer(curr_instance);
+  }
+
+  if(edc != curr_edc) {
+    ANNOTATE("#A rank=%u.%u\n", edc/EDC_DIVISOR,
+        (10 * (edc % EDC_DIVISOR)) / EDC_DIVISOR);
+  }
+
+  curr_edc = edc;
+}
+
 void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
 
   cc2420_softack_subscribe(orpl_softack_input_callback, orpl_softack_acked_callback);
@@ -417,9 +463,11 @@ void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
   orpl_up_only = up_only;
 
   is_edc_root = is_root;
+
   if(is_edc_root) {
-	ANNOTATE("#A color=red\n");
-    e2e_edc = 0;
+    ANNOTATE("#A color=red\n");
+    ANNOTATE("#A rank=0.0\n");
+    orpl_update_edc(0);
   }
   routing_set_init();
 //  uip_create_linklocal_allnodes_mcast(&bloom_addr);
@@ -443,8 +491,8 @@ broadcast_acked(const rimeaddr_t *receiver) {
   uint16_t neighbor_id = node_id_from_rimeaddr(receiver);
   if(neighbor_id != 0) {
     uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)receiver, 0) + 1;
-    if(count > broadcast_count+1) {
-      count = broadcast_count+1;
+    if(count > orpl_broadcast_count+1) {
+      count = orpl_broadcast_count+1;
     }
     rpl_set_parent_bc_ackcount((uip_lladdr_t *)receiver, count);
   }
@@ -468,7 +516,7 @@ check_neighbors() {
 void
 broadcast_done() {
   printf("Anycast: broadcast done\n");
-  broadcast_count++;
+  orpl_broadcast_count++;
 }
 
 int
@@ -521,7 +569,7 @@ anycast_set_packetbuf_addr()
     /* TODO ORPL: don't rely on appdata */
     struct app_data data;
     appdata_copy(&data, appdataptr_from_packetbuf());
-    ptr[1] = e2e_edc;
+    ptr[1] = orpl_current_edc();
     ptr[2] = data.seqno >> 16;
     ptr[3] = data.seqno;
   }
@@ -531,7 +579,7 @@ anycast_set_packetbuf_addr()
  * Return 1 if anycast, 0 otherwise */
 int
 anycast_parse_addr(rimeaddr_t *addr, enum anycast_direction_e *anycast_direction,
-    uint16_t *e2e_edc, uint32_t *seqno)
+    uint16_t *curr_edc, uint32_t *seqno)
 {
   int up = 0;
   int down = 0;
@@ -545,7 +593,7 @@ anycast_parse_addr(rimeaddr_t *addr, enum anycast_direction_e *anycast_direction
     addr_host_order[i] = addr->u8[7-i];
   }
 
-  /* Compare only the 2 first bytes, as other bytes carry e2e_edc and seqno */
+  /* Compare only the 2 first bytes, as other bytes carry curr_edc and seqno */
   if(!memcmp(addr_host_order, &anycast_addr_up, 2)) {
     if(anycast_direction) *anycast_direction = direction_up;
     up = 1;
@@ -562,7 +610,7 @@ anycast_parse_addr(rimeaddr_t *addr, enum anycast_direction_e *anycast_direction
 
   uint16_t *ptr = (uint16_t*)addr_host_order;
   /* Extrace sender EDC */
-  if(e2e_edc) *e2e_edc = ptr[1];
+  if(curr_edc) *curr_edc = ptr[1];
   /* Extrace end-to-end sequence number */
   if(seqno) *seqno = (((uint32_t)ptr[2]) << 16) + (uint32_t)ptr[3];
 
@@ -605,14 +653,15 @@ orpl_softack_input_callback(const uint8_t *frame, uint8_t framelen, uint8_t **ac
 	}
 
 	if(do_ack) { /* Prepare ack */
+	  rpl_rank_t curr_edc = orpl_current_edc();
 		*ackbufptr = ackbuf;
 		*acklen = sizeof(ackbuf);
 		ackbuf[2] = seqno;
 		/* Append our address to the standard 802.15.4 ack */
 		rimeaddr_copy((rimeaddr_t*)(ackbuf+3), &rimeaddr_node_addr);
 		/* Append our rank to the ack */
-		ackbuf[3+8] = e2e_edc & 0xff;
-		ackbuf[3+8+1] = (e2e_edc >> 8)& 0xff;
+		ackbuf[3+8] = curr_edc & 0xff;
+		ackbuf[3+8+1] = (curr_edc >> 8)& 0xff;
 	} else {
 		*acklen = 0;
 	}
@@ -661,6 +710,7 @@ orpl_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc)
 
     /* Parse the destination address */
     if(anycast_parse_addr((rimeaddr_t*)dest_addr, &anycast_direction, &current_edc, &seqno)) {
+      rpl_rank_t curr_edc = orpl_current_edc();
 
       /* This is anycast, make forwarding decision */
       is_anycast = IS_ANYCAST;
@@ -682,7 +732,7 @@ orpl_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc)
         do_ack = 1;
       } else if(anycast_direction == direction_up) {
         /* Routing upwards. ACK if our rank is better. */
-        if(current_edc > EDC_W && e2e_edc < current_edc - EDC_W) {
+        if(current_edc > EDC_W && curr_edc < current_edc - EDC_W) {
           do_ack = DO_ACK;
         } else {
           /* We don't route upwards, now check if we are a common ancester of the source
@@ -695,7 +745,7 @@ orpl_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc)
         }
       } else if(anycast_direction == direction_down) {
         /* Routing downwards. ACK if we have a worse rank and destination is in subdodag */
-        if(e2e_edc > EDC_W && e2e_edc - EDC_W > current_edc
+        if(curr_edc > EDC_W && curr_edc - EDC_W > current_edc
             && !blacklist_contains(seqno) && is_in_subdodag(&dest_ipv6)) {
           do_ack = DO_ACK;
         }

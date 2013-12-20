@@ -1258,7 +1258,10 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
     if(dio->rank != INFINITE_RANK) {
       instance->dio_counter++;
     }
-    return;
+#if !WITH_ORPL
+    return; /* With ORPL we want to have neighbors in the "rpl_parents"
+    table as we need their rank and ackcount for routing set. */
+#endif
   }
 
   /*
@@ -1299,6 +1302,13 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
       p->rank=dio->rank;
     }
   }
+
+#if WITH_ORPL
+  if(dag->rank == ROOT_RANK(instance)) {
+    /* We have added the parent, now return if we are root */
+    return;
+  }
+#endif
 
   PRINTF("RPL: preferred DAG ");
   PRINT6ADDR(&instance->current_dag->dag_id);

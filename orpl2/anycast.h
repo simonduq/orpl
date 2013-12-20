@@ -24,13 +24,12 @@ extern rimeaddr_t anycast_addr_up;
 extern rimeaddr_t anycast_addr_down;
 extern rimeaddr_t anycast_addr_nbr;
 extern rimeaddr_t anycast_addr_recover;
-extern uint16_t hbh_edc;
-extern uint16_t e2e_edc;
 extern uint32_t anycast_count_incomming;
 extern uint32_t anycast_count_acked;
 extern uint32_t routing_set_merged_count;
 extern int sending_bloom;
 extern int is_edc_root;
+extern uint32_t orpl_broadcast_count;
 
 void orpl_print_ranks();
 uint8_t orpl_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc);
@@ -50,5 +49,7 @@ void received_noip();
 void anycast_init(const uip_ipaddr_t *my_ipaddr, int is_root, int up_only);
 int orpl_is_topology_frozen();
 void update_annotations();
+rpl_rank_t orpl_current_edc();
+void orpl_update_edc(rpl_rank_t edc);
 
 #endif

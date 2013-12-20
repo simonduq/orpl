@@ -90,7 +90,7 @@ log_appdataptr(struct app_data *dataptr)
   printf(" {%u/%u %u %u} \n",
         forwarder_set_size,
         neighbor_set_size,
-        e2e_edc,
+        orpl_current_edc(),
         curr_dio_interval
         );
 }

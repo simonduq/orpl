@@ -121,7 +121,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
       etimer_set(&send_timer, random_rand() % (SEND_INTERVAL));
       PROCESS_WAIT_UNTIL(etimer_expired(&send_timer));
 
-      if(e2e_edc != 0xffff) {
+      if(orpl_current_edc() != 0xffff) {
         app_send_to(ROOT_ID);
       } else {
         printf("App: not in DODAG\n");
