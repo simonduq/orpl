@@ -44,14 +44,10 @@
 #include <string.h>
 #include <stdio.h>
 
-/* We implement ageing through double-buffering */
-typedef struct {
-  routing_set sets[2]; /* The two sets: one active and one inactive. */
-  int active; /* Index of the currently active set. 1-current is the inactive one. */
-} double_rs;
-
-/* The global double routing set */
-static double_rs drs;
+/* We maintain two routing sets, one "active" and one "warmup" to implement ageing. */
+static routing_set routing_sets[2];
+/* Index of the currently active set. 1-current is the warmup one. */
+static int active_index;
 
 #if ORPL_RS_TYPE == ORPL_RS_TYPE_BITMAP
 
@@ -108,13 +104,13 @@ rs_get_bit(routing_set rs, int i) {
 void
 routing_set_init()
 {
-  memset(&drs, 0, sizeof(double_rs));
+  memset(routing_sets, 0, sizeof(routing_sets));
 }
 
 /* Returns a pointer to the currently active routing set */
 routing_set *
 routing_set_get_active() {
-  return &drs.sets[drs.active];
+  return &routing_sets[active_index];
 }
 
 /* Inserts a global IPv6 in the global double routing set */
@@ -125,8 +121,8 @@ routing_set_insert(const uip_ipaddr_t *ipv6)
   uint64_t hash = get_hash(ipv6);
   /* For each hash, set a bit in both routing sets */
   for(k=0; k<ROUTING_SET_K; k++) {
-    rs_set_bit(drs.sets[0], hash % ROUTING_SET_M);
-    rs_set_bit(drs.sets[1], hash % ROUTING_SET_M);
+    rs_set_bit(routing_sets[0], hash % ROUTING_SET_M);
+    rs_set_bit(routing_sets[1], hash % ROUTING_SET_M);
     hash /= ROUTING_SET_M;
   }
 }
@@ -139,8 +135,8 @@ routing_set_merge(routing_set rs, uint16_t id)
   for(i=0; i<sizeof(routing_set); i++) {
     /* We merge into both active and warmup routing sets.
      * Merging is ORing */
-    drs.sets[0][i] |= rs[i];
-    drs.sets[1][i] |= rs[i];
+    routing_sets[0][i] |= rs[i];
+    routing_sets[1][i] |= rs[i];
   }
 }
 
@@ -169,9 +165,9 @@ void
 routing_set_swap()
 {
   /* Swap active flag */
-  drs.active = 1 - drs.active;
+  active_index = 1 - active_index;
   /* Reset the newly inactive filter */
-  memset(drs.sets[1 - drs.active], 0, sizeof(routing_set));
+  memset(routing_sets[1 - active_index], 0, sizeof(routing_set));
 }
 
 /* Returns the number of bits set in the active routing set */
@@ -192,7 +188,7 @@ routing_set_count_bits()
 void
 routing_set_print()
 {
-  printf("Routing set: bits set %d/%d\n", routing_set_count_bits(drs), ROUTING_SET_M);
+  printf("Routing set: bits set %d/%d\n", routing_set_count_bits(), ROUTING_SET_M);
   printf("Routing set: start\n");
   int i;
   for(i=0; i<ROUTING_SET_M/8; i++) {
