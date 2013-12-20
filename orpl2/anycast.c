@@ -448,56 +448,6 @@ void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
 
 }
 
-void anycast_set_packetbuf_addr() {
-  uint16_t *ptr = (uint16_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
-  if(rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_up) || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_down)
-      || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_nbr) || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_recover)) {
-    struct app_data data;
-    appdata_copy(&data, appdataptr_from_packetbuf());
-    ptr[1] = e2e_edc;
-    ptr[2] = data.seqno >> 16;
-    ptr[3] = data.seqno;
-  }
-}
-
-int anycast_parse_addr(rimeaddr_t *addr, enum anycast_direction_e *anycast_direction, uint16_t *e2e_edc, uint32_t *seqno) {
-  int up = 0;
-  int down = 0;
-  int nbr = 0;
-  int recover = 0;
-
-  int i;
-  uint8_t reverted_addr[8];
-  for(i=0; i<8; i++) {
-    reverted_addr[i] = addr->u8[7-i];
-  }
-
-  /* Compare only the 2 first bytes, as other bytes carry e2e_edc and seqno */
-  if(!memcmp(reverted_addr, &anycast_addr_up, 2)) {
-    if(anycast_direction) *anycast_direction = direction_up;
-    up = 1;
-  } else if(!memcmp(reverted_addr, &anycast_addr_down, 2)) {
-    if(anycast_direction) *anycast_direction = direction_down;
-    down = 1;
-  } else if(!memcmp(reverted_addr, &anycast_addr_nbr, 2)) {
-    if(anycast_direction) *anycast_direction = direction_nbr;
-    nbr = 1;
-  } else if(!memcmp(reverted_addr, &anycast_addr_recover, 2)) {
-    if(anycast_direction) *anycast_direction = direction_recover;
-    recover = 1;
-  }
-
-  uint16_t *ptr = (uint16_t*)reverted_addr;
-  if(e2e_edc) *e2e_edc = ptr[1];
-  if(seqno) *seqno = (((uint32_t)ptr[2]) << 16) + (uint32_t)ptr[3];
-
-  if(!up && !down && !nbr && !recover) {
-    return 0;
-  } else {
-    return 1;
-  }
-}
-
 static void
 start_forwarder_set(int verbose) {
   curr_ackcount_sum = 0;
@@ -744,13 +694,82 @@ is_in_subdodag(uip_ipaddr_t *ipv6) {
 }
 
 /**********************************************************************
- ************ Softack-related code ************************************
+ ************ Anycast-related code ************************************
  *********************************************************************/
 
 /* A buffer where extended 802.15.4 are prepared */
 static unsigned char ackbuf[3 + EXTRA_ACK_LEN] = {0x02, 0x00};
 /* Seqno of the last acked frame */
 static uint8_t last_acked_seqno = -1;
+
+/* Set the destination link-layer address in packetbuf in case of anycast.
+ * The address contains the following information:
+ * - direction, among up, down, nbr, recover
+ * - the EDC of the sender
+ * - the end-to-end sequence number
+ *  */
+void
+anycast_set_packetbuf_addr()
+{
+  uint16_t *ptr = (uint16_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
+  /* Check is the address is an anycast address */
+  if(rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_up) || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_down)
+      || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_nbr) || rimeaddr_cmp((rimeaddr_t*)ptr, &anycast_addr_recover)) {
+    /* Append EDC and sequence number */
+    /* TODO ORPL: don't rely on appdata */
+    struct app_data data;
+    appdata_copy(&data, appdataptr_from_packetbuf());
+    ptr[1] = e2e_edc;
+    ptr[2] = data.seqno >> 16;
+    ptr[3] = data.seqno;
+  }
+}
+
+/* Parse a link-layer address, extract anycast direction, sender EDC, end-to-end sequence number.
+ * Return 1 if anycast, 0 otherwise */
+int
+anycast_parse_addr(rimeaddr_t *addr, enum anycast_direction_e *anycast_direction,
+    uint16_t *e2e_edc, uint32_t *seqno)
+{
+  int up = 0;
+  int down = 0;
+  int nbr = 0;
+  int recover = 0;
+
+  int i;
+  uint8_t addr_host_order[8];
+  /* Convert from litte endian (802.15.4) to big endian (Conitki addresses) */
+  for(i=0; i<8; i++) {
+    addr_host_order[i] = addr->u8[7-i];
+  }
+
+  /* Compare only the 2 first bytes, as other bytes carry e2e_edc and seqno */
+  if(!memcmp(addr_host_order, &anycast_addr_up, 2)) {
+    if(anycast_direction) *anycast_direction = direction_up;
+    up = 1;
+  } else if(!memcmp(addr_host_order, &anycast_addr_down, 2)) {
+    if(anycast_direction) *anycast_direction = direction_down;
+    down = 1;
+  } else if(!memcmp(addr_host_order, &anycast_addr_nbr, 2)) {
+    if(anycast_direction) *anycast_direction = direction_nbr;
+    nbr = 1;
+  } else if(!memcmp(addr_host_order, &anycast_addr_recover, 2)) {
+    if(anycast_direction) *anycast_direction = direction_recover;
+    recover = 1;
+  }
+
+  uint16_t *ptr = (uint16_t*)addr_host_order;
+  /* Extrace sender EDC */
+  if(e2e_edc) *e2e_edc = ptr[1];
+  /* Extrace end-to-end sequence number */
+  if(seqno) *seqno = (((uint32_t)ptr[2]) << 16) + (uint32_t)ptr[3];
+
+  if(!up && !down && !nbr && !recover) {
+    return 0; /* This is not an anycast address */
+  } else {
+    return 1; /* This is an anycast address */
+  }
+}
 
 /* The frame was acked (i.e. we wanted to ack it AND it was not corrupt).
  * Store the last acked sequence number to avoid repeatedly acking in case
