@@ -6,7 +6,7 @@ TARGET=sky
 WITH_UIP6=1
 UIP_CONF_IPV6=1
 CFLAGS+= -DUIP_CONF_IPV6_RPL
-PROJECT_SOURCEFILES += anycast.c rpl-of-edc.c routing-set.c contikimac-orpl.c cc2420-softack.c deployment.c simple-energest.c orpl-log.c
+PROJECT_SOURCEFILES += anycast.c orpl-of-edc.c routing-set.c contikimac-orpl.c cc2420-softack.c deployment.c simple-energest.c orpl-log.c
 
 CYCLE_TIME ?= 500
 CFLAGS += -DCMD_CYCLE_TIME=$(CYCLE_TIME)
