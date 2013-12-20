@@ -142,14 +142,16 @@ anycast_parse_addr(rimeaddr_t *addr, enum anycast_direction_e *anycast_direction
  * Store the last acked sequence number to avoid repeatedly acking in case
  * we're not duty cycled (e.g. border router) */
 static void
-orpl_softack_acked_callback(const uint8_t *frame, uint8_t framelen) {
+orpl_softack_acked_callback(const uint8_t *frame, uint8_t framelen)
+{
 	last_acked_seqno = frame[2];
 }
 
 /* Called for every incoming frame from interrupt. We check if we want to ack the
  * frame and prepare an ACK if needed */
 static void
-orpl_softack_input_callback(const uint8_t *frame, uint8_t framelen, uint8_t **ackbufptr, uint8_t *acklen) {
+orpl_softack_input_callback(const uint8_t *frame, uint8_t framelen, uint8_t **ackbufptr, uint8_t *acklen)
+{
 	uint8_t fcf, is_data, ack_required, seqno;
 	int do_ack = 0;
 
