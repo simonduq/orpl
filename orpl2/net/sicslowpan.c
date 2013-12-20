@@ -1336,6 +1336,12 @@ packet_sent(void *ptr, int status, int transmissions)
 {
   uip_ds6_link_neighbor_callback(status, transmissions);
 
+#if WITH_ORPL
+  if(packetbuf_attr(PACKETBUF_ATTR_SEND_BLOOM) == 1) {
+    bloom_packet_sent(ptr, status, transmissions);
+  }
+#endif /* WITH_ORPL */
+
   if(callback != NULL) {
     callback->output_callback(status);
   }

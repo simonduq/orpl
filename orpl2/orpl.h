@@ -29,11 +29,9 @@ extern uint32_t orpl_broadcast_count;
 
 void orpl_print_ranks();
 int is_reachable_neighbor(uip_ipaddr_t *ipv6);
-void orpl_anycast_set_packetbuf_addr();
 void orpl_trickle_callback(rpl_instance_t *instance);
 void broadcast_acked(const rimeaddr_t *receiver);
 void broadcast_done();
-void bloom_broacast_failed();
 void blacklist_insert(uint32_t seqno);
 int blacklist_contains(uint32_t seqno);
 void acked_down_insert(uint32_t seqno, uint16_t id);
@@ -44,5 +42,6 @@ void update_annotations();
 rpl_rank_t orpl_current_edc();
 void orpl_update_edc(rpl_rank_t edc);
 int orpl_is_root();
+void bloom_packet_sent(void *ptr, int status, int transmissions);
 
 #endif /* __ORPL_H__ */

@@ -260,7 +260,7 @@ anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message)
   }
 }
 
-static void
+void
 bloom_packet_sent(void *ptr, int status, int transmissions)
 {
   if(status == MAC_TX_COLLISION) {
