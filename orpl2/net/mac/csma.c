@@ -434,12 +434,8 @@ input_packet(void)
     if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
                        &rimeaddr_null)) {
     }
-    /* We use frame pending bit to tell that this is a no-IP packet containing a Bloom filter */
-    if(packetbuf_attr(PACKETBUF_ATTR_PENDING)) {
-      received_noip();
-    } else {
-      NETSTACK_NETWORK.input();
-    }
+
+    NETSTACK_NETWORK.input();
   }
 #else /* WITH_ORPL */
   NETSTACK_NETWORK.input();

@@ -38,7 +38,6 @@ void blacklist_insert(uint32_t seqno);
 int blacklist_contains(uint32_t seqno);
 void acked_down_insert(uint32_t seqno, uint16_t id);
 int acked_down_contains(uint32_t seqno, uint16_t id);
-void received_noip();
 void anycast_init(const uip_ipaddr_t *my_ipaddr, int is_root, int up_only);
 int orpl_is_topology_frozen();
 void update_annotations();

@@ -5,6 +5,7 @@
 #include "net/packetbuf.h"
 #include "net/rpl/rpl.h"
 #include "net/nbr-table.h"
+#include "net/simple-udp.h"
 #if IN_COOJA
 #define DEBUG DEBUG_ANNOTATE
 //#define DEBUG DEBUG_NONE
@@ -43,8 +44,8 @@
 #endif
 
 #if FREEZE_TOPOLOGY
-#define UPDATE_EDC_MAX_TIME 2
-#define UPDATE_BLOOM_MIN_TIME 3
+#define UPDATE_EDC_MAX_TIME 1
+#define UPDATE_BLOOM_MIN_TIME 2
 #else
 #define UPDATE_EDC_MAX_TIME 0
 #define UPDATE_BLOOM_MIN_TIME 0
@@ -67,6 +68,10 @@ static void check_neighbors(void);
 static rtimer_clock_t start_time;
 
 static int orpl_up_only = 0;
+
+#define UDP_PORT 4444
+static struct simple_udp_connection bloom_connection;
+static uip_ipaddr_t bloom_addr;
 
 struct bloom_broadcast_s {
   uint16_t magic; /* we need a magic number here as this goes straight on top of 15.4 mac
@@ -163,24 +168,17 @@ test_prr(uint16_t count, uint16_t threshold)
   }
 }
 
-void
-received_noip()
+static void
+bloom_udp_received(struct simple_udp_connection *c,
+         const uip_ipaddr_t *sender_addr,
+         uint16_t sender_port,
+         const uip_ipaddr_t *receiver_addr,
+         uint16_t receiver_port,
+         const uint8_t *data,
+         uint16_t datalen)
 {
-  packetbuf_copyto(&bloom_broadcast);
-  bloom_received(&bloom_broadcast);
+  bloom_received((struct bloom_broadcast_s *)data);
 }
-
-//static void
-//bloom_udp_received(struct simple_udp_connection *c,
-//         const uip_ipaddr_t *sender_addr,
-//         uint16_t sender_port,
-//         const uip_ipaddr_t *receiver_addr,
-//         uint16_t receiver_port,
-//         const uint8_t *data,
-//         uint16_t datalen)
-//{
-//  bloom_received((struct bloom_broadcast_s *)data);
-//}
 
 void
 bloom_received(struct bloom_broadcast_s *data)
@@ -289,12 +287,7 @@ bloom_do_broadcast(void *ptr)
     sending_bloom = 1;
 
     printf("Bloom: do broadcast %u\n", bloom_broadcast.rank);
-    packetbuf_clear();
-    packetbuf_copyfrom(&bloom_broadcast, sizeof(struct bloom_broadcast_s));
-    packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &rimeaddr_null);
-    /* We use frame pending bit to tell that this is a no-IP packet containing a Bloom filter */
-    packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 1);
-    NETSTACK_MAC.send(&bloom_packet_sent, NULL);
+    simple_udp_sendto(&bloom_connection, &bloom_broadcast, sizeof(struct bloom_broadcast_s), &bloom_addr);
 
     sending_bloom = 0;
   }
@@ -475,9 +468,10 @@ void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
     orpl_update_edc(0);
   }
   routing_set_init();
-//  uip_create_linklocal_allnodes_mcast(&bloom_addr);
-//  simple_udp_register(&bloom_connection, UDP_PORT,
-//                        NULL, UDP_PORT,
-//                        bloom_udp_received);
+
+  uip_create_linklocal_allnodes_mcast(&bloom_addr);
+  simple_udp_register(&bloom_connection, UDP_PORT,
+                        NULL, UDP_PORT,
+                        bloom_udp_received);
 
 }
