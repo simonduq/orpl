@@ -51,6 +51,7 @@
 #include "sys/pt.h"
 #include "sys/rtimer.h"
 #include "orpl.h"
+#include "orpl-anycast.h"
 #include "deployment.h"
 #include "orpl-log.h"
 

@@ -101,7 +101,7 @@ int check_reachable_count() {
       continue;
     }
     set_ipaddr_from_id(&dest_ipaddr, id);
-    if(is_in_subdodag(&dest_ipaddr)) {
+    if(routing_set_contains(&dest_ipaddr)) {
       count++;
     }
   }

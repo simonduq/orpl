@@ -28,9 +28,6 @@ extern int is_edc_root;
 extern uint32_t orpl_broadcast_count;
 
 void orpl_print_ranks();
-uint8_t orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc);
-void anycast_packet_received();
-int is_in_subdodag(uip_ipaddr_t *ipv6);
 int is_reachable_neighbor(uip_ipaddr_t *ipv6);
 void orpl_anycast_set_packetbuf_addr();
 void orpl_trickle_callback(rpl_instance_t *instance);

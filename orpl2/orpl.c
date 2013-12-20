@@ -59,40 +59,14 @@
 
 uint32_t orpl_broadcast_count = 0;
 
+int is_node_addressable(uip_ipaddr_t *ipv6);
+int time_elapsed();
 void rpl_link_neighbor_callback(const rimeaddr_t *addr, int status, int numtx);
-
+static void check_neighbors(void);
 
 static rtimer_clock_t start_time;
 
-int
-orpl_is_root()
-{
-  return orpl_current_edc() == 0;
-}
-
-rpl_rank_t
-orpl_current_edc()
-{
-  rpl_dag_t *dag = rpl_get_any_dag();
-  return dag == NULL ? 0xffff : dag->rank;
-}
-
-int time_elapsed() {
-  return (RTIMER_NOW()-start_time)/(RTIMER_ARCH_SECOND*60);
-}
-
 static int orpl_up_only = 0;
-
-int
-orpl_is_topology_frozen()
-{
-  if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
-    if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
-      return 1;
-    }
-  }
-  return 0;
-}
 
 struct bloom_broadcast_s {
   uint16_t magic; /* we need a magic number here as this goes straight on top of 15.4 mac
@@ -122,22 +96,19 @@ uint16_t last_broadcasted_rank = 0xffff;
 rpl_dag_t *curr_dag;
 rpl_instance_t *curr_instance;
 static struct ctimer broadcast_bloom_timer;
-//static int bit_count_last = 0;
 
 void check_neighbors();
 int test_prr(uint16_t count, uint16_t threshold);
 void bloom_received(struct bloom_broadcast_s *data);
 void bloom_request_broadcast();
 
-int is_node_addressable(uip_ipaddr_t *ipv6) {
-  return 1;
-}
-
 /* Bloom filter false positive black list */
 #define BLACKLIST_SIZE 16
 static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
 
-void blacklist_insert(uint32_t seqno) {
+void
+blacklist_insert(uint32_t seqno)
+{
   printf("Bloom: blacklisting %lx\n", seqno);
   int i;
   for(i = BLACKLIST_SIZE - 1; i > 0; --i) {
@@ -146,7 +117,9 @@ void blacklist_insert(uint32_t seqno) {
   blacklisted_seqnos[0] = seqno;
 }
 
-int blacklist_contains(uint32_t seqno) {
+int
+blacklist_contains(uint32_t seqno)
+{
   int i;
   for(i = 0; i < BLACKLIST_SIZE; ++i) {
     if(seqno == blacklisted_seqnos[i]) {
@@ -156,7 +129,9 @@ int blacklist_contains(uint32_t seqno) {
   return 0;
 }
 
-void acked_down_insert(uint32_t seqno, uint16_t id) {
+void
+acked_down_insert(uint32_t seqno, uint16_t id)
+{
   printf("Bloom: inserted ack down %lx %u\n", seqno, id);
   int i;
   for(i = ACKED_DOWN_SIZE - 1; i > 0; --i) {
@@ -166,7 +141,9 @@ void acked_down_insert(uint32_t seqno, uint16_t id) {
   acked_down[0].id = id;
 }
 
-int acked_down_contains(uint32_t seqno, uint16_t id) {
+int
+acked_down_contains(uint32_t seqno, uint16_t id)
+{
   int i;
   for(i = 0; i < ACKED_DOWN_SIZE; ++i) {
     if(seqno == acked_down[i].seqno && id == acked_down[i].id) {
@@ -176,58 +153,9 @@ int acked_down_contains(uint32_t seqno, uint16_t id) {
   return 0;
 }
 
-void orpl_print_ranks() {
-  rpl_rank_t curr_edc = orpl_current_edc();
-  rpl_parent_t *p;
-  printf("Ackcount: start\n");
-  for(p = nbr_table_head(rpl_parents);
-        p != NULL;
-        p = nbr_table_next(rpl_parents, p)) {
-    uint16_t count = p->bc_ackcount;
-    uint16_t neighbor_rank = p->rank;
-    rimeaddr_t *addr = nbr_table_get_lladdr(rpl_parents, p);
-    uint16_t neighbor_id = node_id_from_rimeaddr(addr);
-    if(neighbor_id == 0) {
-      printf("Ackcount: [0] -> ");
-      uip_debug_lladdr_print((const uip_lladdr_t *)addr);
-      printf("\n");
-    } else {
-      printf("Ackcount: [%u] %u/%lu (%u %u -> %u) ->", neighbor_id, count, orpl_broadcast_count, curr_edc, neighbor_rank,
-          (neighbor_rank != 0xffff && neighbor_rank > curr_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD))?1:0);
-      uip_debug_lladdr_print((const uip_lladdr_t *)addr);
-            printf("\n");
-    }
-  }
-  printf("Ackcount: end\n");
-
-  routing_set_print();
-
-  uint16_t i;
-  int count = 0;
-  int print_header = 1;
-  printf("BFlist: start\n");
-  for(i=0; i<get_n_nodes(); i++) {
-    if(print_header) {
-      printf("BFlist: [%2u]", count/8);
-      print_header = 0;
-    }
-    uip_ipaddr_t dest_ipaddr;
-    uint16_t id = get_node_id_from_index(i);
-    set_ipaddr_from_id(&dest_ipaddr, id);
-    int contained = is_in_subdodag(&dest_ipaddr);
-    if(contained) {
-      count+=1;
-      printf("%3u, ", id);
-      if(count%8 == 0) {
-        printf("\n");
-        print_header = 1;
-      }
-    }
-  }
-  printf("\nBFlist: end (%u nodes)\n",count);
-}
-
-int test_prr(uint16_t count, uint16_t threshold) {
+int
+test_prr(uint16_t count, uint16_t threshold)
+{
   if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
     return time_elapsed() > UPDATE_BLOOM_MIN_TIME && orpl_broadcast_count >= 4 && (100*count/orpl_broadcast_count >= threshold);
   } else {
@@ -236,7 +164,8 @@ int test_prr(uint16_t count, uint16_t threshold) {
 }
 
 void
-received_noip() {
+received_noip()
+{
   packetbuf_copyto(&bloom_broadcast);
   bloom_received(&bloom_broadcast);
 }
@@ -304,7 +233,9 @@ bloom_received(struct bloom_broadcast_s *data)
   }
 }
 
-void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message) {
+void
+anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message)
+{
   uip_ipaddr_t neighbor_ipaddr;
   uint16_t neighbor_id = node_id_from_rimeaddr(neighbor_addr);
   uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)neighbor_addr, 0xffff);
@@ -335,13 +266,15 @@ static void
 bloom_packet_sent(void *ptr, int status, int transmissions)
 {
   if(status == MAC_TX_COLLISION) {
-    bloom_broacast_failed();
+    bloom_request_broadcast();
    }
   rpl_link_neighbor_callback(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), status, transmissions);
   check_neighbors();
 }
 
-void bloom_do_broadcast(void *ptr) {
+void
+bloom_do_broadcast(void *ptr)
+{
   if(FREEZE_TOPOLOGY && orpl_up_only && time_elapsed() <= UPDATE_BLOOM_MIN_TIME) {
     printf("Bloom size %u\n", sizeof(struct bloom_broadcast_s));
     printf("Bloom: requesting broadcast\n");
@@ -367,17 +300,15 @@ void bloom_do_broadcast(void *ptr) {
   }
 }
 
-void bloom_broacast_failed() {
-  bloom_request_broadcast();
-}
-
-void bloom_request_broadcast() {
+void
+bloom_request_broadcast()
+{
   printf("Bloom: requesting broadcast\n");
   ctimer_set(&broadcast_bloom_timer, random_rand() % (4 * NETSTACK_RDC.channel_check_interval()), bloom_do_broadcast, NULL);
 }
 
 void
-orpl_trickle_callback(rpl_instance_t *instance) {
+orpl_trickle_callback(rpl_instance_t *instance){
   ORPL_LOG_NULL("Anycast: trickle callback");
   curr_instance = instance;
   curr_dag = instance ? instance->current_dag : NULL;
@@ -406,6 +337,64 @@ orpl_trickle_callback(rpl_instance_t *instance) {
   rpl_recalculate_ranks();
 }
 
+static void
+check_neighbors()
+{
+  if(orpl_up_only == 0) {
+    rpl_parent_t *p;
+    for(p = nbr_table_head(rpl_parents);
+          p != NULL;
+          p = nbr_table_next(rpl_parents, p)) {
+      uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents, p));
+      if(neighbor_id != 0) {
+        anycast_add_neighbor_to_bloom(nbr_table_get_lladdr(rpl_parents, p), "broadcast done");
+      }
+    }
+  }
+}
+
+void
+broadcast_acked(const rimeaddr_t *receiver)
+{
+  uint16_t neighbor_id = node_id_from_rimeaddr(receiver);
+  if(neighbor_id != 0) {
+    uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)receiver, 0) + 1;
+    if(count > orpl_broadcast_count+1) {
+      count = orpl_broadcast_count+1;
+    }
+    rpl_set_parent_bc_ackcount((uip_lladdr_t *)receiver, count);
+  }
+}
+
+void
+broadcast_done()
+{
+  printf("Anycast: broadcast done\n");
+  orpl_broadcast_count++;
+}
+
+int
+is_reachable_neighbor(uip_ipaddr_t *ipv6)
+{
+  rpl_parent_t *p;
+  uint16_t id = node_id_from_ipaddr(ipv6);
+  for(p = nbr_table_head(rpl_parents);
+			p != NULL;
+			p = nbr_table_next(rpl_parents, p)) {
+    uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents, p));
+    if(id == neighbor_id) {
+      uint16_t count = p->bc_ackcount;
+      if(count == -1) {
+      	count = 0;
+      }
+      return test_prr(count, NEIGHBOR_PRR_THRESHOLD);
+    }
+  }
+  return 0;
+}
+
+/* General ORPL stuff */
+
 void
 orpl_update_edc(rpl_rank_t edc)
 {
@@ -415,15 +404,11 @@ orpl_update_edc(rpl_rank_t edc)
   if(dag) {
     dag->rank = edc;
   }
-  printf("ORPL: updating rank %p %u\n", dag, dag->rank);
 
   /* Reset DIO timer if the rank changed significantly */
   if(curr_instance && last_broadcasted_rank != 0xffff &&
-      (
-      (last_broadcasted_rank > curr_edc && last_broadcasted_rank - curr_edc > RANK_MAX_CHANGE)
-      ||
-      (curr_edc > last_broadcasted_rank && curr_edc - last_broadcasted_rank > RANK_MAX_CHANGE)
-      )) {
+      ((last_broadcasted_rank > curr_edc && last_broadcasted_rank - curr_edc > RANK_MAX_CHANGE) ||
+      (curr_edc > last_broadcasted_rank && curr_edc - last_broadcasted_rank > RANK_MAX_CHANGE))) {
     PRINTF("ORPL: reset DIO timer (rank changed from %u to %u)\n", last_broadcasted_rank, curr_edc);
     last_broadcasted_rank = curr_edc;
     rpl_reset_dio_timer(curr_instance);
@@ -437,7 +422,44 @@ orpl_update_edc(rpl_rank_t edc)
   curr_edc = edc;
 }
 
-void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
+int
+orpl_is_topology_frozen()
+{
+  if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
+    if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int
+is_node_addressable(uip_ipaddr_t *ipv6)
+{
+  return 1;
+}
+
+int
+orpl_is_root()
+{
+  return orpl_current_edc() == 0;
+}
+
+rpl_rank_t
+orpl_current_edc()
+{
+  rpl_dag_t *dag = rpl_get_any_dag();
+  return dag == NULL ? 0xffff : dag->rank;
+}
+
+int
+time_elapsed()
+{
+  return (RTIMER_NOW()-start_time)/(RTIMER_ARCH_SECOND*60);
+}
+
+void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
+{
 
   orpl_anycast_init(global_ipaddr);
 
@@ -458,70 +480,4 @@ void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
 //                        NULL, UDP_PORT,
 //                        bloom_udp_received);
 
-}
-
-
-void
-anycast_packet_received() {
-  uint16_t neighbor_edc = packetbuf_attr(PACKETBUF_ATTR_EDC);
-  if(neighbor_edc != 0xffff) {
-	  rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_edc);
-  }
-}
-
-void
-broadcast_acked(const rimeaddr_t *receiver) {
-  uint16_t neighbor_id = node_id_from_rimeaddr(receiver);
-  if(neighbor_id != 0) {
-    uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)receiver, 0) + 1;
-    if(count > orpl_broadcast_count+1) {
-      count = orpl_broadcast_count+1;
-    }
-    rpl_set_parent_bc_ackcount((uip_lladdr_t *)receiver, count);
-  }
-}
-
-void
-check_neighbors() {
-  if(orpl_up_only == 0) {
-    rpl_parent_t *p;
-    for(p = nbr_table_head(rpl_parents);
-          p != NULL;
-          p = nbr_table_next(rpl_parents, p)) {
-      uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents, p));
-      if(neighbor_id != 0) {
-        anycast_add_neighbor_to_bloom(nbr_table_get_lladdr(rpl_parents, p), "broadcast done");
-      }
-    }
-  }
-}
-
-void
-broadcast_done() {
-  printf("Anycast: broadcast done\n");
-  orpl_broadcast_count++;
-}
-
-int
-is_reachable_neighbor(uip_ipaddr_t *ipv6) {
-  rpl_parent_t *p;
-  uint16_t id = node_id_from_ipaddr(ipv6);
-  for(p = nbr_table_head(rpl_parents);
-			p != NULL;
-			p = nbr_table_next(rpl_parents, p)) {
-    uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents, p));
-    if(id == neighbor_id) {
-      uint16_t count = p->bc_ackcount;
-      if(count == -1) {
-      	count = 0;
-      }
-      return test_prr(count, NEIGHBOR_PRR_THRESHOLD);
-    }
-  }
-  return 0;
-}
-
-int
-is_in_subdodag(uip_ipaddr_t *ipv6) {
-  return is_node_addressable(ipv6) && routing_set_contains(ipv6);
 }
