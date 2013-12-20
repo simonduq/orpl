@@ -1020,19 +1020,19 @@ input_packet(void)
   }
 
   if(packetbuf_datalen() > 0) {
-    uint16_t rank;
-    int ret = frame80254_parse_anycast_process(packetbuf_dataptr(), packetbuf_datalen(),
-    		packetbuf_attr(PACKETBUF_ATTR_ACKED), &rank);
+    uint16_t neighbor_edc;
+    int ret = orpl_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc);
 
     if(ret & IS_ANYCAST) {
       packetbuf_set_attr(PACKETBUF_ATTR_IS_ANYCAST, (ret & IS_ANYCAST) != 0);
       packetbuf_set_attr(PACKETBUF_ATTR_IS_RECOVERY, (ret & IS_RECOVERY) != 0);
-      packetbuf_set_attr(PACKETBUF_ATTR_EDC, rank);
+      packetbuf_set_attr(PACKETBUF_ATTR_EDC, neighbor_edc);
+      packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
     } else {
       packetbuf_set_attr(PACKETBUF_ATTR_EDC, 0xffff);
     }
 
-    rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER), rank);
+    rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER), neighbor_edc);
   }
 
   /*  printf("cycle_start 0x%02x 0x%02x\n", cycle_start, cycle_start % CYCLE_TIME);*/

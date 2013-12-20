@@ -45,6 +45,7 @@
 #include "dev/spi.h"
 #include "dev/cc2420.h"
 #include "dev/cc2420_const.h"
+#include "cc2420-softack.h"
 
 #include "net/packetbuf.h"
 #include "net/rime/rimestats.h"
@@ -633,12 +634,23 @@ LIST(rf_list);
 #define RXFIFO_SIZE   128
 #define RXFIFO_ADDR(index) (RXFIFO_START + (index) % RXFIFO_SIZE)
 
+static softack_input_callback_f *softack_input_callback;
+static softack_acked_callback_f *softack_acked_callback;
+
+/* Subscribe with two callbacks called from FIFOP interrupt */
+void
+cc2420_softack_subscribe(softack_input_callback_f *input_callback, softack_acked_callback_f *acked_callback)
+{
+  softack_input_callback = input_callback;
+  softack_acked_callback = acked_callback;
+}
+
 int
 cc2420_interrupt(void)
 {
   uint8_t len, seqno, footer1;
   uint8_t len_a, len_b;
-  uint8_t *ackbuf, acklen;
+  uint8_t *ackbuf, acklen = 0;
 
   int do_ack;
   int frame_valid = 0;
@@ -705,7 +717,9 @@ cc2420_interrupt(void)
   seqno = rf->buf[2];
   rf->seqno = seqno;
 
-  SOFTACK_INPUT_CALLBACK(rf->buf, len_a, &ackbuf, &acklen);
+  if(softack_input_callback) {
+    softack_input_callback(rf->buf, len_a, &ackbuf, &acklen);
+  }
   do_ack = acklen > 0;
 
   if(do_ack) {
@@ -749,7 +763,9 @@ cc2420_interrupt(void)
   }
 
   if(frame_valid && do_ack) {
-	SOFTACK_ACKED_CALLBACK(rf->buf, len_a);
+    if(softack_acked_callback) {
+      softack_acked_callback(rf->buf, len_a);
+    }
     last_rf = rf;
   } else {
     last_rf = NULL;

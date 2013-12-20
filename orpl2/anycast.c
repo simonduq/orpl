@@ -17,6 +17,7 @@
 #include "orpl-log.h"
 #include "random.h"
 #include "net/rpl/rpl-private.h"
+#include "cc2420-softack.h"
 #include <string.h>
 
 #if IN_COOJA
@@ -25,7 +26,6 @@
 #define TEST_FALSE_POSITIVES 0
 #endif
 
-#define CHECK_FILTER_ON_UP 1
 #define ALL_NEIGHBORS_IN_FILTER 0
 
 #if (CMD_CYCLE_TIME >= 250)
@@ -58,6 +58,8 @@
 
 #define BLOOM_MAGIC 0x83d9
 
+static void orpl_softack_acked_callback(const uint8_t *buf, uint8_t len);
+static void orpl_softack_input_callback(const uint8_t *buf, uint8_t len, uint8_t **ackbufptr, uint8_t *acklen);
 void rpl_link_neighbor_callback(const rimeaddr_t *addr, int status, int numtx);
 
 int forwarder_set_size = 0;
@@ -110,7 +112,8 @@ int is_edc_root = 0;
 uint32_t broadcast_count = 0;
 
 static struct bloom_broadcast_s bloom_broadcast;
-static struct acked_down acked_down[ACKED_DOWN_SIZE];static uint16_t last_broadcasted_rank = 0xffff;
+static struct acked_down acked_down[ACKED_DOWN_SIZE];
+static uint16_t last_broadcasted_rank = 0xffff;
 static rpl_dag_t *curr_dag;
 static rpl_instance_t *curr_instance;
 static uint32_t curr_ackcount_edc_sum;
@@ -424,6 +427,7 @@ orpl_trickle_callback(rpl_instance_t *instance) {
 
 void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
 
+  cc2420_softack_subscribe(orpl_softack_input_callback, orpl_softack_acked_callback);
   uip_ip6addr(&prefix, 0, 0, 0, 0, 0, 0, 0, 0);
   memcpy(&prefix, global_ipaddr, 8);
 
@@ -739,31 +743,41 @@ is_in_subdodag(uip_ipaddr_t *ipv6) {
   return is_node_addressable(ipv6) && routing_set_contains(ipv6);
 }
 
+/**********************************************************************
+ ************ Softack-related code ************************************
+ *********************************************************************/
+
+/* A buffer where extended 802.15.4 are prepared */
 static unsigned char ackbuf[3 + EXTRA_ACK_LEN] = {0x02, 0x00};
-static uint8_t last_acked = -1;
-void
-softack_acked_callback(const uint8_t *buf, uint8_t len) {
-	uint8_t seqno = buf[2];
-	last_acked = seqno;
+/* Seqno of the last acked frame */
+static uint8_t last_acked_seqno = -1;
+
+/* The frame was acked (i.e. we wanted to ack it AND it was not corrupt).
+ * Store the last acked sequence number to avoid repeatedly acking in case
+ * we're not duty cycled (e.g. border router) */
+static void
+orpl_softack_acked_callback(const uint8_t *frame, uint8_t framelen) {
+	last_acked_seqno = frame[2];
 }
 
-void
-softack_input_callback(const uint8_t *buf, uint8_t len,
-	uint8_t **ackbufptr, uint8_t *acklen) {
+/* Called for every incoming frame from interrupt. We check if we want to ack the
+ * frame and prepare an ACK if needed */
+static void
+orpl_softack_input_callback(const uint8_t *frame, uint8_t framelen, uint8_t **ackbufptr, uint8_t *acklen) {
 	uint8_t fcf, is_data, ack_required, seqno;
 	int do_ack = 0;
 
-	fcf = buf[0];
+	fcf = frame[0];
 	is_data = (fcf & 7) == 1;
 	ack_required = (fcf >> 5) & 1;
-	seqno = buf[2];
+	seqno = frame[2];
 
 	if(is_data) {
-		if(ack_required) {
-			do_ack = frame80254_parse_anycast_irq((uint8_t *)buf, len) & DO_ACK;
+		if(ack_required) { /* This is unicast or unicast, parse it */
+			do_ack = orpl_parse_802154_frame((uint8_t *)frame, framelen, NULL) & DO_ACK;
 		} else { /* We also ack broadcast, even if we didn't modify the framer
 		and still send them with ack_required unset */
-			if(seqno != last_acked) {
+			if(seqno != last_acked_seqno) {
 				do_ack = 1;
 			}
 		}
@@ -773,7 +787,7 @@ softack_input_callback(const uint8_t *buf, uint8_t len,
 		*ackbufptr = ackbuf;
 		*acklen = sizeof(ackbuf);
 		ackbuf[2] = seqno;
-		/* Append our address to the standard 15.4 ack */
+		/* Append our address to the standard 802.15.4 ack */
 		rimeaddr_copy((rimeaddr_t*)(ackbuf+3), &rimeaddr_node_addr);
 		/* Append our rank to the ack */
 		ackbuf[3+8] = e2e_edc & 0xff;
@@ -783,8 +797,11 @@ softack_input_callback(const uint8_t *buf, uint8_t len,
 	}
 }
 
+/* Parse a modified 802.15.4 frame, extract the neighbor EDC, and return
+ * information regarding routing and software acks, described as a subset of the
+ * flags DO_ACK, IS_ANYCAST, FROM_SUBDODAG, IS_RECOVERY. */
 uint8_t
-frame80254_parse_anycast_irq(uint8_t *data, uint8_t len)
+orpl_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc)
 {
   frame802154_fcf_t fcf;
   uint8_t *dest_addr = NULL;
@@ -799,151 +816,94 @@ frame80254_parse_anycast_irq(uint8_t *data, uint8_t len)
     return 0;
   }
 
-  /* decode the FCF */
+  /* Decode the FCF */
   fcf.frame_type = data[0] & 7;
   fcf.ack_required = (data[0] >> 5) & 1;
-  fcf.panid_compression = (data[0] >> 6) & 1;
+  dest_addr = data + 3 + 2;
+  src_addr = data + 3 + 2 + 8;
 
-  fcf.dest_addr_mode = (data[1] >> 2) & 3;
-  fcf.src_addr_mode = (data[1] >> 6) & 3;
-
-//  seqno = data[2];
-
-  /* Destination address, if any */
-  if(fcf.dest_addr_mode) {
-    dest_addr = data + 3 + 2;
-  }
-
-  if(fcf.src_addr_mode) {
-    src_addr = data + 3 + 2 + 8;
-  }
-
-  if(fcf.frame_type == FRAME802154_DATAFRAME
-      && fcf.ack_required == 1) {
+  /* This is a unciast or anycast data frame */
+  if(fcf.frame_type == FRAME802154_DATAFRAME && fcf.ack_required == 1) {
     enum anycast_direction_e anycast_direction = direction_none;
-    uint16_t neighbor_edc;
     uint32_t seqno;
-    uint8_t src_addr_reverted[8];
-    uint8_t dest_addr_reverted[8];
+    uint8_t src_addr_host_order[8];
+    uint8_t dest_addr_host_order[8];
+    uint16_t current_edc;
 
+    /* Convert from 802.15.4 little endian to Contiki's big-endian addresses */
     for(i=0; i<8; i++) {
-    	src_addr_reverted[i] = src_addr[7-i];
-    	dest_addr_reverted[i] = dest_addr[7-i];
+      src_addr_host_order[i] = src_addr[7-i];
+      src_addr_host_order[i] = dest_addr[7-i];
     }
-    uint16_t neighbor_id = node_id_from_rimeaddr((rimeaddr_t*)src_addr_reverted);
+    /* TODO ORPL: should use address instead of id */
+    uint16_t neighbor_id = node_id_from_rimeaddr((rimeaddr_t*)src_addr_host_order);
 
-    if(anycast_parse_addr((rimeaddr_t*)dest_addr, &anycast_direction, &neighbor_edc, &seqno)) {
+    /* Parse the destination address */
+    if(anycast_parse_addr((rimeaddr_t*)dest_addr, &anycast_direction, &current_edc, &seqno)) {
 
-      /* This is anycast, take forwarding decision */
+      /* This is anycast, make forwarding decision */
       is_anycast = IS_ANYCAST;
       if(anycast_direction == direction_up) {
         from_subdodag = FROM_SUBDODAG;
       }
 
-      /* Calculate destination IPv6 */
+      /* Calculate destination IPv6 address */
+      /* TODO ORPL: better document this addressing */
       uip_ipaddr_t dest_ipv6;
       memcpy(&dest_ipv6, &prefix, 8);
       memcpy(((char*)&dest_ipv6)+8, data + 22 + 12, 8);
-//      uint16_t dest_id = node_id_from_ipaddr(&dest_ipv6);
 
-      if(uip_ds6_is_my_addr(&dest_ipv6)) { /* Take the data if it's for us */
+      if(uip_ds6_is_my_addr(&dest_ipv6)) {
+        /* Take the data if it is for us */
         do_ack = DO_ACK;
-      } else if(anycast_direction == direction_up) { /* Routing upwards. YES if our rank is better. */
-        if(neighbor_edc > EDC_W && e2e_edc < neighbor_edc - EDC_W) {
+      } else if(rimeaddr_cmp((rimeaddr_t*)dest_addr_host_order, &rimeaddr_node_addr)) {
+        /* Unicast, for us */
+        do_ack = 1;
+      } else if(anycast_direction == direction_up) {
+        /* Routing upwards. ACK if our rank is better. */
+        if(current_edc > EDC_W && e2e_edc < current_edc - EDC_W) {
           do_ack = DO_ACK;
-        }
-#if CHECK_FILTER_ON_UP
-        else {
-          if(!blacklist_contains(seqno)) {
-//          if(!blacklist_contains_dest(dest_id)) {
-            if(is_in_subdodag(&dest_ipv6)) { /* Traffic is going up but we have destination in filter.
-          Ack it and start routing downwards (towards the dest) */
-              do_ack = DO_ACK;
-            }
-          }
-        }
-#endif
-      } else if(anycast_direction == direction_down) { /* Routing downwards. YES if we have a worse rank and destination is in subdodag */
-          if(!blacklist_contains(seqno)) {
-//          if(!blacklist_contains_dest(dest_id)) {
-          if(e2e_edc > EDC_W && e2e_edc - EDC_W > neighbor_edc && is_in_subdodag(&dest_ipv6)) {
+        } else {
+          /* We don't route upwards, now check if we are a common ancester of the source
+           * and destination. We do this by checking our routing set against the destination. */
+          if(!blacklist_contains(seqno) && is_in_subdodag(&dest_ipv6)) {
+            /* Traffic is going up but we have destination in our routing set.
+             * Ack it and start routing downwards (towards the destination) */
             do_ack = DO_ACK;
           }
         }
+      } else if(anycast_direction == direction_down) {
+        /* Routing downwards. ACK if we have a worse rank and destination is in subdodag */
+        if(e2e_edc > EDC_W && e2e_edc - EDC_W > current_edc
+            && !blacklist_contains(seqno) && is_in_subdodag(&dest_ipv6)) {
+          do_ack = DO_ACK;
+        }
       } else if(anycast_direction == direction_recover) {
+        /* This packet is sent back from a child that experiences false positive. Only
+         * the nodes that did forward this same packet downwards before are allowed to
+         * take the packet back during a recovery, before sending down again. This is
+         * to avoid duplicates during the recovery process. */
         recovery = IS_RECOVERY;
-//          if(!blacklist_contains(seqno)) {
-//          if(!blacklist_contains_dest(dest_id)) {
-//          if(is_in_subdodag(&dest_ipv6)) {
-//            do_ack = DO_ACK;
-//          }
-//        }
-
+        /* ORPL TODO: base this on address rather than ID */
         do_ack = acked_down_contains(seqno, neighbor_id);
       }
-    } else if(rimeaddr_cmp((rimeaddr_t*)dest_addr_reverted,&rimeaddr_node_addr)) {
-    	do_ack = 1;
+    }
+
+    /* Set neighbor_edc for the caller */
+    if(neighbor_edc) {
+      *neighbor_edc = current_edc;
+    }
+
+    /* Set destination address to ours in case we acked the packet to it doesn't
+     * get dropped next */
+    if(do_ack) {
+      int i;
+      for(i=0; i<8; i++) {
+        dest_addr[i] = rimeaddr_node_addr.u8[7-i];
+      }
     }
   }
 
+  /* Return routing/acknowledging information */
   return do_ack | is_anycast | from_subdodag | recovery;
-}
-
-uint8_t
-frame80254_parse_anycast_process(uint8_t *data, uint8_t len, int acked, uint16_t *rank)
-{
-  frame802154_fcf_t fcf;
-  uint8_t *dest_addr = NULL;
-  int is_anycast = 0;
-  int from_subdodag = 0;
-  int recovery = 0;
-
-  if(len < 3) {
-    return 0;
-  }
-
-  /* decode the FCF */
-  fcf.frame_type = data[0] & 7;
-  fcf.ack_required = (data[0] >> 5) & 1;
-  fcf.panid_compression = (data[0] >> 6) & 1;
-
-  fcf.dest_addr_mode = (data[1] >> 2) & 3;
-  fcf.src_addr_mode = (data[1] >> 6) & 3;
-
-  /* Destination address, if any */
-  if(fcf.dest_addr_mode) {
-    dest_addr = data + 3 + 2;
-  }
-
-  if(fcf.frame_type == FRAME802154_DATAFRAME
-                && fcf.ack_required == 1) {
-    /* This is anycast, take forwarding decision */
-
-    enum anycast_direction_e anycast_direction = direction_none;
-    uint16_t neighbor_edc;
-    uint32_t seqno;
-    if(anycast_parse_addr((rimeaddr_t*)dest_addr, &anycast_direction, &neighbor_edc, &seqno)) {
-      is_anycast = IS_ANYCAST;
-      if(anycast_direction == direction_up) {
-        from_subdodag = FROM_SUBDODAG;
-      }
-      if(anycast_direction == direction_recover){
-        recovery = IS_RECOVERY;
-      }
-
-      if(rank) {
-        *rank = neighbor_edc;
-      }
-
-      /* We acked, set dest addr as ours */
-      if(acked) {
-        int i;
-        for(i=0; i<8; i++) {
-          dest_addr[i] = rimeaddr_node_addr.u8[7-i];
-        }
-      }
-    }
-  }
-
-  return is_anycast | from_subdodag | recovery;
 }

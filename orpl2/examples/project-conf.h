@@ -106,8 +106,8 @@ typedef uint32_t rtimer_clock_t;
 #undef NETSTACK_CONF_RDC
 #define NETSTACK_CONF_RDC     contikimac_orpl_driver
 
-#define SOFTACK_ACKED_CALLBACK softack_acked_callback
-#define SOFTACK_INPUT_CALLBACK softack_input_callback
+#define SOFTACK_ACKED_CALLBACK orpl_softack_acked_callback
+#define SOFTACK_INPUT_CALLBACK orpl_softack_input_callback
 
 #undef NETSTACK_CONF_RADIO
 #define NETSTACK_CONF_RADIO   cc2420_softack_driver

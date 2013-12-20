@@ -14,10 +14,9 @@
 #define EXTRA_ACK_LEN 10
 
 #define DO_ACK            1 /* Set if a link-layer ack must be sent */
-#define DO_FORWARD        2 /* Set if the link-layer ack must contain the "forward" bit */
-#define IS_ANYCAST        4 /* Set if the packet is a anycast */
-#define FROM_SUBDODAG     8 /* Set if the packet is coming from the sub-dodag (going upwards) */
-#define IS_RECOVERY       16 /* Set if the packet comes from false positive recovery */
+#define IS_ANYCAST        2 /* Set if the packet is a anycast */
+#define FROM_SUBDODAG     4 /* Set if the packet is coming from the sub-dodag (going upwards) */
+#define IS_RECOVERY       8 /* Set if the packet comes from false positive recovery */
 
 extern int forwarder_set_size;
 extern int neighbor_set_size;
@@ -34,8 +33,7 @@ extern int sending_bloom;
 extern int is_edc_root;
 
 void orpl_print_ranks();
-uint8_t frame80254_parse_anycast_irq(uint8_t *data, uint8_t len);
-uint8_t frame80254_parse_anycast_process(uint8_t *data, uint8_t len, int acked, uint16_t *rank);
+uint8_t orpl_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc);
 void anycast_packet_sent();
 void anycast_packet_received();
 void update_e2e_edc();
@@ -52,7 +50,5 @@ void acked_down_insert(uint32_t seqno, uint16_t id);
 int acked_down_contains(uint32_t seqno, uint16_t id);
 void received_noip();
 void anycast_init(const uip_ipaddr_t *my_ipaddr, int is_root, int up_only);
-void softack_acked_callback(const uint8_t *buf, uint8_t len);
-void softack_input_callback(const uint8_t *buf, uint8_t len, uint8_t **ackbufptr, uint8_t *acklen);
 
 #endif
