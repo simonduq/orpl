@@ -20,10 +20,6 @@
 
 extern int forwarder_set_size;
 extern int neighbor_set_size;
-extern rimeaddr_t anycast_addr_up;
-extern rimeaddr_t anycast_addr_down;
-extern rimeaddr_t anycast_addr_nbr;
-extern rimeaddr_t anycast_addr_recover;
 extern uint32_t anycast_count_incomming;
 extern uint32_t anycast_count_acked;
 extern uint32_t routing_set_merged_count;

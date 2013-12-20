@@ -68,6 +68,7 @@
 #include "net/netstack.h"
 #if WITH_ORPL
 #include "orpl.h"
+#include "orpl-anycast.h"
 #endif /* WITH_ORPL */
 
 #if UIP_CONF_IPV6

@@ -43,6 +43,12 @@
 
 #include "uip.h"
 
+/* The different link-layer addresses used for anycast */
+extern rimeaddr_t anycast_addr_up;
+extern rimeaddr_t anycast_addr_down;
+extern rimeaddr_t anycast_addr_nbr;
+extern rimeaddr_t anycast_addr_recover;
+
 /* Set the destination link-layer address in packetbuf in case of anycast */
 void orpl_anycast_set_packetbuf_addr();
 /* Parse a modified 802.15.4 frame */
