@@ -67,7 +67,7 @@
 #include "net/sicslowpan.h"
 #include "net/netstack.h"
 #if WITH_ORPL
-#include "anycast.h"
+#include "orpl.h"
 #endif /* WITH_ORPL */
 
 #if UIP_CONF_IPV6

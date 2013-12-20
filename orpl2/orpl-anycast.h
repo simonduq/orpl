@@ -25,72 +25,29 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
-  *
+ *
+ * This file is part of the Contiki operating system.
+ *
  */
+
 /**
  * \file
- *         Tools for logging ORPL state and tracing data packets
- *
- * \author Simon Duquennoy <simonduq@sics.se>
+ *         orpl-anycast.c header file
+ * \author
+ *         Simon Duquennoy <simonduq@sics.se>
  */
 
-#include "contiki.h"
-#include "orpl.h"
-#include "deployment.h"
-#include "net/rpl/rpl.h"
-#include "net/rpl/rpl-private.h"
-#include "net/packetbuf.h"
-#include "orpl-log.h"
-#include <string.h>
 
-/* Copy an appdata to another with no assumption that the addresses are aligned */
-void
-appdata_copy(struct app_data *dst, struct app_data *src)
-{
-  int i;
-  for(i=0; i<sizeof(struct app_data); i++) {
-    ((char*)dst)[i] = (((char*)src)[i]);
-  }
-}
+#ifndef __ORPL_ANYCAST_H__
+#define __ORPL_ANYCAST_H__
 
-/* Get dataptr from the packet currently in uIP buffer */
-struct app_data *
-appdataptr_from_uip()
-{
-  return (struct app_data *)((char*)uip_buf + ((uip_len - APP_PAYLOAD_LEN - 1)));
-}
+#include "uip.h"
 
-/* Get dataptr from the current packetbuf */
-struct app_data *
-appdataptr_from_packetbuf()
-{
-  if(packetbuf_datalen() < 64) return 0;
-  return (struct app_data *)((char*)packetbuf_dataptr() + ((packetbuf_datalen() - APP_PAYLOAD_LEN - 1)));
-}
+/* Set the destination link-layer address in packetbuf in case of anycast */
+void orpl_anycast_set_packetbuf_addr();
+/* Parse a modified 802.15.4 frame */
+uint8_t orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc);
+/* Anycast-specific inits */
+void orpl_anycast_init(const uip_ipaddr_t *global_ipaddr);
 
-/* Log information about a data packet along with ORPL routing information */
-void
-log_appdataptr(struct app_data *dataptr)
-{
-  struct app_data data;
-  int curr_dio_interval = default_instance->dio_intcurrent;
-
-  if(dataptr) {
-    appdata_copy(&data, dataptr);
-
-    printf(" [%lx %u_%u %u->%u]",
-        data.seqno,
-        data.hop,
-        data.fpcount,
-        data.src,
-        data.dest
-        );
-  }
-
-  printf(" {%u/%u %u %u} \n",
-        forwarder_set_size,
-        neighbor_set_size,
-        orpl_current_edc(),
-        curr_dio_interval
-        );
-}
+#endif /* __ORPL_ANYCAST_H__ */

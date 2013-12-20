@@ -62,7 +62,7 @@ extern rpl_of_t RPL_OF;
 static rpl_of_t * const objective_functions[] = {&RPL_OF};
 
 #if WITH_ORPL
-#include "anycast.h"
+#include "orpl.h"
 #include "net/packetbuf.h"
 #endif /* WITH_ORPL */
 
@@ -1116,7 +1116,7 @@ rpl_recalculate_ranks(void)
     /* In ORPL the rank is not bound to a particular parent.
      * We just want to calculate it once. */
     if(p->dag != NULL && p->dag->instance) {
-      p->dag->instance->of->calculate_rank(p, NULL);
+      p->dag->instance->of->calculate_rank(p, 0);
       break;
     }
 #else /* WITH_ORPL */

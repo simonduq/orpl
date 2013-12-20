@@ -48,7 +48,7 @@
 #endif
 
 #if WITH_ORPL
-#include "anycast.h"
+#include "orpl.h"
 #include "routing-set.h"
 #endif /* WITH_ORPL */
 

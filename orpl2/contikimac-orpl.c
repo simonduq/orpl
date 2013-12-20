@@ -50,7 +50,7 @@
 #include "sys/compower.h"
 #include "sys/pt.h"
 #include "sys/rtimer.h"
-#include "anycast.h"
+#include "orpl.h"
 #include "deployment.h"
 #include "orpl-log.h"
 
@@ -596,7 +596,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
   } else {
   
     /* set anycast address */
-    anycast_set_packetbuf_addr();
+    orpl_anycast_set_packetbuf_addr();
 
 #if UIP_CONF_IPV6
     PRINTDEBUG("contikimac: send unicast to %02x%02x:%02x%02x:%02x%02x:%02x%02x\n",
@@ -1021,7 +1021,7 @@ input_packet(void)
 
   if(packetbuf_datalen() > 0) {
     uint16_t neighbor_edc;
-    int ret = orpl_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc);
+    int ret = orpl_anycast_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc);
 
     if(ret & IS_ANYCAST) {
       packetbuf_set_attr(PACKETBUF_ATTR_IS_ANYCAST, (ret & IS_ANYCAST) != 0);

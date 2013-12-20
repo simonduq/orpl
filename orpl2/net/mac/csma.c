@@ -55,7 +55,7 @@
 #if WITH_ORPL
 #include "deployment.h"
 #include "net/uip.h"
-#include "anycast.h"
+#include "orpl.h"
 #include "orpl-log.h"
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 #endif /* WITH_ORPL */
