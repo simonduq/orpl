@@ -647,8 +647,9 @@ rpl_select_dag(rpl_instance_t *instance, rpl_parent_t *p)
   rpl_rank_t old_rank;
 
 #if WITH_ORPL /* This ORPL implementation supports only one DAG,
-and as ORPL doesn't have the concept of preferred parent, we skip
-this whole function */
+and as ORPL doesn't have the concept of preferred parent.
+We just update the rank and return the DAG. */
+  instance->of->calculate_rank(p, 0);
   return instance->current_dag;
 #endif /* WITH_ORPL */
 
@@ -1111,6 +1112,14 @@ rpl_recalculate_ranks(void)
    */
   p = nbr_table_head(rpl_parents);
   while(p != NULL) {
+#if WITH_ORPL
+    /* In ORPL the rank is not bound to a particular parent.
+     * We just want to calculate it once. */
+    if(p->dag != NULL && p->dag->instance) {
+      p->dag->instance->of->calculate_rank(p, NULL);
+      break;
+    }
+#else /* WITH_ORPL */
     if(p->dag != NULL && p->dag->instance && p->updated) {
       p->updated = 0;
       PRINTF("RPL: rpl_process_parent_event recalculate_ranks\n");
@@ -1118,6 +1127,7 @@ rpl_recalculate_ranks(void)
         PRINTF("RPL: A parent was dropped\n");
       }
     }
+#endif /* WITH_ORPL */
     p = nbr_table_next(rpl_parents, p);
   }
 }
@@ -1178,11 +1188,6 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
   rpl_dag_t *dag, *previous_dag;
   rpl_parent_t *p;
 
-#if WITH_ORPL // TODO ORPL: won't be needed once we use rpl_parent->rank instead
-  rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), dio->rank);
-  update_e2e_edc(0);
-#endif /* WITH_ORPL */
-
   if(dio->mop != RPL_MOP_DEFAULT) {
     PRINTF("RPL: Ignoring a DIO with an unsupported MOP: %d\n", dio->mop);
     return;
@@ -1232,7 +1237,6 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
     rpl_add_dag(from, dio);
     return;
   }
-
 
   if(dio->rank < ROOT_RANK(instance)) {
     PRINTF("RPL: Ignoring DIO with too low rank: %u\n",

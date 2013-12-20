@@ -70,7 +70,7 @@ handle_periodic_timer(void *ptr)
 {
 #if WITH_ORPL /* ORPL doesn't need to purge routes nor send DIS.
 We just update EDC periodically */
-  update_e2e_edc(0);
+  rpl_recalculate_ranks();
 #else /* WITH_ORPL */
   rpl_purge_routes();
   rpl_recalculate_ranks();

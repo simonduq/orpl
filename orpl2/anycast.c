@@ -34,8 +34,6 @@
 #define NEIGHBOR_PRR_THRESHOLD 35
 #endif
 
-#define RANK_MAX_CHANGE (2*EDC_DIVISOR)
-
 /* For tests. When set:
  * - stop updating EDC after N minutes
  * - start updating Bloom sets only after N+1 minutes
@@ -62,6 +60,7 @@ static void orpl_softack_acked_callback(const uint8_t *buf, uint8_t len);
 static void orpl_softack_input_callback(const uint8_t *buf, uint8_t len, uint8_t **ackbufptr, uint8_t *acklen);
 void rpl_link_neighbor_callback(const rimeaddr_t *addr, int status, int numtx);
 
+
 int forwarder_set_size = 0;
 int neighbor_set_size = 0;
 static rtimer_clock_t start_time;
@@ -72,6 +71,17 @@ int time_elapsed() {
 }
 
 static int orpl_up_only = 0;
+
+int
+orpl_is_topology_frozen()
+{
+  if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
+    if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
 struct bloom_broadcast_s {
   uint16_t magic; /* we need a magic number here as this goes straight on top of 15.4 mac
@@ -109,15 +119,13 @@ uint32_t anycast_count_acked;
 int sending_bloom = 0;
 int is_edc_root = 0;
 
-uint32_t broadcast_count = 0;
+extern uint32_t broadcast_count;
 
 static struct bloom_broadcast_s bloom_broadcast;
 static struct acked_down acked_down[ACKED_DOWN_SIZE];
-static uint16_t last_broadcasted_rank = 0xffff;
-static rpl_dag_t *curr_dag;
-static rpl_instance_t *curr_instance;
-static uint32_t curr_ackcount_edc_sum;
-static uint32_t curr_ackcount_sum;
+uint16_t last_broadcasted_rank = 0xffff;
+rpl_dag_t *curr_dag;
+rpl_instance_t *curr_instance;
 static struct ctimer broadcast_bloom_timer;
 //static int bit_count_last = 0;
 
@@ -150,14 +158,6 @@ void blacklist_insert(uint32_t seqno) {
   }
   blacklisted_seqnos[0] = seqno;
 }
-//void blacklist_insert_dst(uint16_t id) {
-//  printf("Bloom: blacklisting node %u\n", id);
-//  int i;
-//  for(i = BLACKLIST_SIZE - 1; i > 0; --i) {
-//    blacklisted_seqnos[i] = blacklisted_seqnos[i - 1];
-//  }
-//  blacklisted_seqnos[0] = seqno;
-//}
 
 int blacklist_contains(uint32_t seqno) {
   int i;
@@ -168,15 +168,6 @@ int blacklist_contains(uint32_t seqno) {
   }
   return 0;
 }
-//int blacklist_contains_dst(uint16_t id) {
-//  int i;
-//  for(i = 0; i < BLACKLIST_SIZE; ++i) {
-//    if(seqno == blacklisted_seqnos[i]) {
-//      return 1;
-//    }
-//  }
-//  return 0;
-//}
 
 void acked_down_insert(uint32_t seqno, uint16_t id) {
   printf("Bloom: inserted ack down %lx %u\n", seqno, id);
@@ -293,7 +284,7 @@ bloom_received(struct bloom_broadcast_s *data)
   printf("Bloom: received rank from %u %u -> %u (%p)\n", neighbor_id, rank_before, neighbor_rank, data);
 
   rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_rank);
-  update_e2e_edc(0);
+  rpl_recalculate_ranks();
 
   uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), 0xffff);
   if(count == 0xffff) {
@@ -421,7 +412,8 @@ orpl_trickle_callback(rpl_instance_t *instance) {
 
   }
 
-  update_e2e_edc(1);
+  /* We recalculate the ranks periodically */
+  rpl_recalculate_ranks();
   update_annotations();
 }
 
@@ -448,185 +440,6 @@ void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {
 
 }
 
-static void
-start_forwarder_set(int verbose) {
-  curr_ackcount_sum = 0;
-  curr_ackcount_edc_sum = 0;
-
-  if(verbose) {
-    printf("EDC: starting calculation. hbh_edc: %u, e2e_edc %u\n", hbh_edc, e2e_edc);
-  }
-  e2e_edc = 0xffff;
-}
-
-static int
-add_to_forwarder_set(rpl_parent_t *curr_min, uint16_t curr_min_rank, uint16_t ackcount, int verbose) {
-  uint16_t tentative;
-  uint32_t total_tx_count;
-
-  if(ackcount > broadcast_count) {
-    ackcount = broadcast_count;
-  }
-
-  total_tx_count = broadcast_count;
-  if(total_tx_count == 0) {
-    total_tx_count = 1;
-  }
-
-  curr_ackcount_sum += ackcount;
-  curr_ackcount_edc_sum += ackcount * curr_min_rank;
-
-  uint32_t A = hbh_edc * total_tx_count / curr_ackcount_sum;
-  uint32_t B = curr_ackcount_edc_sum / curr_ackcount_sum;
-  if(verbose) {
-    printf("-- A: %5lu, B: %5lu (%u/%lu) ",
-          A,
-          B,
-          ackcount,
-          total_tx_count
-    );
-  }
-
-  tentative = A + B + EDC_W;
-
-  if(verbose) {
-    printf("EDC %5u ", tentative);
-  }
-  if(tentative < e2e_edc) {
-    e2e_edc = tentative;
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-/* Compute forwarder set with minimal EDC */
-void
-update_e2e_edc(int verbose) {
-
-  if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
-    if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
-      return;
-    }
-  }
-
-  static uint16_t prev_e2e_edc;
-  prev_e2e_edc = e2e_edc;
-  forwarder_set_size = 0;
-  neighbor_set_size = 0;
-
-  if(is_edc_root) {
-    e2e_edc = 0;
-  } else {
-    rpl_parent_t *p;
-    int index;
-
-    int curr_index = 0;
-    rpl_parent_t *curr_min;
-    uint16_t curr_min_rank = 0xffff;
-    uint16_t curr_min_ackcount = 0xffff;
-
-    int prev_index = -1;
-    rpl_parent_t *prev_min = NULL;
-    uint16_t prev_min_rank = 0;
-
-    start_forwarder_set(verbose);
-
-    /* Loop on the parents ordered by increasing rank */
-    do {
-      curr_min = NULL;
-
-      for(p = nbr_table_head(rpl_parents), index = 0;
-            p != NULL;
-            p = nbr_table_next(rpl_parents, p), index++) {
-        uint16_t rank = p->rank;
-        uint16_t ackcount = p->bc_ackcount;
-        uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents,p));
-
-        if(neighbor_id != 0
-            && rank != 0xffff
-            && ackcount != 0
-            && (curr_min == NULL || rank < curr_min_rank)
-            && (rank > prev_min_rank || (rank == prev_min_rank && index > prev_index))
-        ) {
-          curr_index = index;
-          curr_min = p;
-          curr_min_rank = rank;
-          curr_min_ackcount = ackcount;
-        }
-      }
-      /* Here, curr_min contains the current p in our ordered lookup */
-      if(curr_min) {
-        uint16_t curr_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents,curr_min));
-        if(verbose) printf("EDC: -> node %3u rank: %5u ", curr_id, curr_min_rank);
-        neighbor_set_size++;
-        if(add_to_forwarder_set(curr_min, curr_min_rank, curr_min_ackcount, verbose) == 1) {
-          forwarder_set_size++;
-          if(verbose) printf("*\n");
-          ANNOTATE("#L %u 1\n", curr_id);
-        } else {
-          if(verbose) printf("\n");
-          ANNOTATE("#L %u 0\n", curr_id);
-        }
-        prev_index = curr_index;
-        prev_min = curr_min;
-        prev_min_rank = curr_min_rank;
-      }
-    } while(curr_min != NULL);
-
-    if(verbose) printf("EDC: final %u\n", e2e_edc);
-  }
-
-  if(e2e_edc != prev_e2e_edc) {
-	update_annotations();
-//    printf("Anycast: updated edc: e2e %u hbh %u fs %u\n", e2e_edc, hbh_edc, forwarder_set_size);
-  }
-
-  if(curr_dag) {
-	  curr_dag->rank = e2e_edc;
-  }
-
-  /* Reset DIO timer if the rank changed significantly */
-  if(curr_instance && last_broadcasted_rank != 0xffff &&
-		  (
-			(last_broadcasted_rank > e2e_edc && last_broadcasted_rank - e2e_edc > RANK_MAX_CHANGE)
-			||
-			(e2e_edc > last_broadcasted_rank && e2e_edc - last_broadcasted_rank > RANK_MAX_CHANGE)
-		  )) {
-	  printf("Anycast: reset DIO timer (rank changed from %u to %u)\n", last_broadcasted_rank, e2e_edc);
-	  last_broadcasted_rank = e2e_edc;
-	  rpl_reset_dio_timer(curr_instance);
-  }
-
-}
-
-void
-anycast_packet_sent() {
-#define ALPHA 9
-  if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
-    if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
-      return;
-    }
-  }
-  if(packetbuf_attr(PACKETBUF_ATTR_GOING_UP)) {
-    /* Calculate hop-by-hop EDC (only for up traffic) */
-    uint16_t curr_hbh_edc = packetbuf_attr(PACKETBUF_ATTR_EDC);
-    uint16_t weighted_curr_hbh_edc;
-    uint16_t hbh_edc_old = hbh_edc;
-    if(curr_hbh_edc == 0xffff) { /* this means noack, use a more aggressive alpha */
-      weighted_curr_hbh_edc = EDC_DIVISOR * 2 * forwarder_set_size;
-      hbh_edc = (hbh_edc * 5 + weighted_curr_hbh_edc * 5) / 10;
-    } else {
-      weighted_curr_hbh_edc = curr_hbh_edc * forwarder_set_size;
-      hbh_edc = ((hbh_edc * ALPHA) + (weighted_curr_hbh_edc * (10-ALPHA))) / 10;
-    }
-
-    printf("Anycast: updated hbh_edc %u -> %u (%u %u)\n", hbh_edc_old, hbh_edc, curr_hbh_edc, weighted_curr_hbh_edc);
-
-      /* Calculate end-to-end EDC */
-    update_e2e_edc(1);
-  }
-}
 
 void
 anycast_packet_received() {

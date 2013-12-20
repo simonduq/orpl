@@ -45,6 +45,9 @@
 
 /* RPL and neighborhood information */
 
+#undef RPL_CONF_MIN_HOPRANKINC
+#define RPL_CONF_MIN_HOPRANKINC 0
+
 #undef RPL_CONF_STATS
 #define RPL_CONF_STATS 0
 
