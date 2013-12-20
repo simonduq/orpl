@@ -138,14 +138,6 @@ int is_node_addressable(uip_ipaddr_t *ipv6) {
   return 1;
 }
 
-/*---------------------------------------------------------------------------*/
-void update_annotations() {
-  if(e2e_edc != 0xffff) {
-	ANNOTATE("#A rank=%u.%u\n", e2e_edc/EDC_DIVISOR,
-	       (10 * (e2e_edc % EDC_DIVISOR)) / EDC_DIVISOR);
-  }
-}
-
 /* Bloom filter false positive black list */
 #define BLACKLIST_SIZE 16
 static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
@@ -312,7 +304,6 @@ bloom_received(struct bloom_broadcast_s *data)
       }
       routing_set_merged_count++;
     }
-    update_annotations();
   }
 }
 
@@ -339,7 +330,6 @@ void anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *messag
       }
     }
   }
-  update_annotations();
 }
 
 static void
@@ -414,7 +404,6 @@ orpl_trickle_callback(rpl_instance_t *instance) {
 
   /* We recalculate the ranks periodically */
   rpl_recalculate_ranks();
-  update_annotations();
 }
 
 void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only) {

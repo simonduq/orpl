@@ -595,7 +595,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
     }
   } else {
   
-    /* set anycast address including a most fresh e2e_edc (metric) */
+    /* set anycast address */
     anycast_set_packetbuf_addr();
 
 #if UIP_CONF_IPV6

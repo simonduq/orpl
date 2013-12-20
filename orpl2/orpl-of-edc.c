@@ -161,8 +161,8 @@ update_e2e_edc(int verbose) {
   }
 
   if(e2e_edc != prev_e2e_edc) {
-  update_annotations();
-//    printf("Anycast: updated edc: e2e %u hbh %u fs %u\n", e2e_edc, hbh_edc, forwarder_set_size);
+    ANNOTATE("#A rank=%u.%u\n", e2e_edc/EDC_DIVISOR,
+        (10 * (e2e_edc % EDC_DIVISOR)) / EDC_DIVISOR);
   }
 
   if(curr_dag) {
