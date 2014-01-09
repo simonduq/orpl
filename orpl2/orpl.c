@@ -109,7 +109,7 @@ static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
 void
 blacklist_insert(uint32_t seqno)
 {
-  printf("Bloom: blacklisting %lx\n", seqno);
+  printf("Routing set: blacklisting %lx\n", seqno);
   int i;
   for(i = BLACKLIST_SIZE - 1; i > 0; --i) {
     blacklisted_seqnos[i] = blacklisted_seqnos[i - 1];
@@ -132,7 +132,7 @@ blacklist_contains(uint32_t seqno)
 void
 acked_down_insert(uint32_t seqno, uint16_t id)
 {
-  printf("Bloom: inserted ack down %lx %u\n", seqno, id);
+  printf("Routing set: inserted ack down %lx %u\n", seqno, id);
   int i;
   for(i = ACKED_DOWN_SIZE - 1; i > 0; --i) {
     acked_down[i] = acked_down[i - 1];
@@ -187,7 +187,7 @@ routing_set_received(struct simple_udp_connection *c,
 
   /* EDC: store rank as neighbor attribute, update metric */
   uint16_t rank_before = rpl_get_parent_rank_default((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), 0xffff);
-  printf("Bloom: received rank from %u %u -> %u (%p)\n", neighbor_id, rank_before, neighbor_rank, data);
+  printf("Routing set: received rank from %u %u -> %u (%p)\n", neighbor_id, rank_before, neighbor_rank, data);
 
   rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_rank);
   rpl_recalculate_ranks();
@@ -205,10 +205,10 @@ routing_set_received(struct simple_udp_connection *c,
       set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
       int bit_count_before = orpl_routing_set_count_bits();
       orpl_routing_set_insert(&sender_ipaddr);
-      printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, orpl_routing_set_count_bits(), "bloom received");
+      printf("Routing set: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, orpl_routing_set_count_bits(), "bloom received");
       orpl_routing_set_merge(((struct bloom_broadcast_s*)data)->filter, neighbor_id);
       int bit_count_after = orpl_routing_set_count_bits();
-      printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after);
+      printf("Routing set: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after);
       if(curr_instance && bit_count_after != bit_count_before) {
         printf("Anycast: reset DIO timer (bloom received)\n");
         //      bit_count_last = bit_count_after;
@@ -231,7 +231,7 @@ anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message)
     return;
   }
   uint16_t neighbor_rank = rpl_get_parent_rank_default((uip_lladdr_t *)neighbor_addr, 0xffff);
-  printf("Bloom: nbr rank %u\n", neighbor_rank);
+  printf("Routing set: nbr rank %u\n", neighbor_rank);
   if(neighbor_rank != 0xffff
 #if (ALL_NEIGHBORS_IN_FILTER==0)
       && neighbor_rank > (curr_edc + EDC_W)
@@ -242,7 +242,7 @@ anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message)
       int bit_count_before = orpl_routing_set_count_bits();
       orpl_routing_set_insert(&neighbor_ipaddr);
       int bit_count_after = orpl_routing_set_count_bits();
-      printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after, message);
+      printf("Routing set: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after, message);
     }
   }
 }
@@ -262,7 +262,7 @@ bloom_do_broadcast(void *ptr)
 {
   if(FREEZE_TOPOLOGY && orpl_up_only && clock_seconds() <= UPDATE_ROUTING_SET_MIN_TIME) {
     printf("Bloom size %u\n", sizeof(struct bloom_broadcast_s));
-    printf("Bloom: requesting broadcast\n");
+    printf("Routing set: requesting broadcast\n");
     ctimer_set(&broadcast_bloom_timer, random_rand() % (32 * CLOCK_SECOND), bloom_do_broadcast, NULL);
   } else {
     rpl_rank_t curr_edc = orpl_current_edc();
@@ -273,7 +273,7 @@ bloom_do_broadcast(void *ptr)
     memcpy(bloom_broadcast.filter, *orpl_routing_set_get_active(), sizeof(routing_set));
     sending_bloom = 1;
 
-    printf("Bloom: do broadcast %u\n", bloom_broadcast.rank);
+    printf("Routing set: do broadcast %u\n", bloom_broadcast.rank);
     simple_udp_sendto(&bloom_connection, &bloom_broadcast, sizeof(struct bloom_broadcast_s), &routing_set_addr);
 
     sending_bloom = 0;
@@ -283,12 +283,13 @@ bloom_do_broadcast(void *ptr)
 void
 bloom_request_broadcast()
 {
-  printf("Bloom: requesting broadcast\n");
+  printf("Routing set: requesting broadcast\n");
   ctimer_set(&broadcast_bloom_timer, random_rand() % (4 * NETSTACK_RDC.channel_check_interval()), bloom_do_broadcast, NULL);
 }
 
 void
-orpl_trickle_callback(rpl_instance_t *instance){
+orpl_trickle_callback(rpl_instance_t *instance)
+{
   ORPL_LOG_NULL("Anycast: trickle callback");
   curr_instance = instance;
   curr_dag = instance ? instance->current_dag : NULL;
@@ -298,7 +299,7 @@ orpl_trickle_callback(rpl_instance_t *instance){
 
 #if !FREEZE_TOPOLOGY
     /* Bloom filter ageing */
-    printf("Bloom: swapping\n");
+    printf("Routing set: swapping\n");
     orpl_routing_set_swap();
 #endif
 
