@@ -36,9 +36,9 @@
 #endif
 
 /* For tests. When set:
- * - stop updating EDC after N minutes
- * - start updating Bloom sets only after N+1 minutes
- * - don't age Bloom sets */
+ * - stop updating EDC after N seconds
+ * - start updating Bloom sets only after N+1 seconds
+ * - don't age routing sets */
 #ifndef FREEZE_TOPOLOGY
 #define FREEZE_TOPOLOGY 1
 #endif
