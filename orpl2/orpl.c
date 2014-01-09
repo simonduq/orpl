@@ -69,9 +69,9 @@ static rtimer_clock_t start_time;
 
 static int orpl_up_only = 0;
 
-#define UDP_PORT 4444
+#define ROUTING_SET_PORT 4444
 static struct simple_udp_connection bloom_connection;
-static uip_ipaddr_t routing_set_mcast_addr;
+static uip_ipaddr_t routing_set_addr;
 
 struct bloom_broadcast_s {
   uint16_t magic; /* we need a magic number here as this goes straight on top of 15.4 mac
@@ -104,7 +104,6 @@ static struct ctimer broadcast_bloom_timer;
 
 void check_neighbors();
 int test_prr(uint16_t count, uint16_t threshold);
-void bloom_received(struct bloom_broadcast_s *data);
 void bloom_request_broadcast();
 
 /* Bloom filter false positive black list */
@@ -169,20 +168,16 @@ test_prr(uint16_t count, uint16_t threshold)
 }
 
 static void
-bloom_udp_received(struct simple_udp_connection *c,
+routing_set_received(struct simple_udp_connection *c,
          const uip_ipaddr_t *sender_addr,
          uint16_t sender_port,
          const uip_ipaddr_t *receiver_addr,
          uint16_t receiver_port,
-         const uint8_t *data,
+         const uint8_t *payload,
          uint16_t datalen)
 {
-  bloom_received((struct bloom_broadcast_s *)data);
-}
+  struct bloom_broadcast_s *data = (struct bloom_broadcast_s *)payload;
 
-void
-bloom_received(struct bloom_broadcast_s *data)
-{
   if(data->magic != BLOOM_MAGIC) {
     printf("Bloom received with wrong magic number\n");
     return;
@@ -287,7 +282,7 @@ bloom_do_broadcast(void *ptr)
     sending_bloom = 1;
 
     printf("Bloom: do broadcast %u\n", bloom_broadcast.rank);
-    simple_udp_sendto(&bloom_connection, &bloom_broadcast, sizeof(struct bloom_broadcast_s), &routing_set_mcast_addr);
+    simple_udp_sendto(&bloom_connection, &bloom_broadcast, sizeof(struct bloom_broadcast_s), &routing_set_addr);
 
     sending_bloom = 0;
   }
@@ -472,9 +467,9 @@ orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
   orpl_routing_set_init();
 
   /* Set up multicast UDP connectoin for dissemination of routing sets */
-  uip_create_linklocal_allnodes_mcast(&routing_set_mcast_addr);
-  simple_udp_register(&bloom_connection, UDP_PORT,
-                        NULL, UDP_PORT,
-                        bloom_udp_received);
+  uip_create_linklocal_allnodes_mcast(&routing_set_addr);
+  simple_udp_register(&bloom_connection, ROUTING_SET_PORT,
+                        NULL, ROUTING_SET_PORT,
+                        routing_set_received);
 
 }
