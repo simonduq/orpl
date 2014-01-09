@@ -90,7 +90,7 @@ static void
 neighbor_link_callback(rpl_parent_t *parent, int known, int edc)
 {
   /* First check if we are allowed to change rank */
-  if(orpl_is_topology_frozen()) {
+  if(orpl_is_edc_frozen()) {
     return;
   }
   /* Calculate the average hop-by-hop EDC, i.e. the average strobe time
@@ -136,7 +136,7 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
   rpl_parent_t *prev_min = NULL;
   uint16_t prev_min_rank = 0;
 
-  if(orpl_is_topology_frozen()) {
+  if(orpl_is_edc_frozen()) {
     return prev_edc;
   }
 

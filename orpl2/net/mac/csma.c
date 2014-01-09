@@ -290,7 +290,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
         		ORPL_LOG_FROM_PACKETBUF("Csma:! triggering false positive recovery %u after %d tx, %d c.", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
         		free_packet(n, q);
         		/* GIve another try, upwards this time, after inserting in blacklist. */
-        		blacklist_insert(data.seqno);
+        		orpl_blacklist_insert(data.seqno);
         		dataptr->fpcount += 1; /* Increment false positive count */
         		ORPL_LOG_FROM_PACKETBUF("Tcpip: false positive recovery %u", dataptr->fpcount);
         		packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 0);
@@ -342,7 +342,7 @@ send_packet(mac_callback_t sent, void *ptr)
 #if WITH_ORPL
     	ORPL_LOG("Csma: send broadcast (%u bytes)\n", packetbuf_datalen());
     	if(sending_routing_set) {
-    		packetbuf_set_attr(PACKETBUF_ATTR_SEND_BLOOM, 1);
+    		packetbuf_set_attr(PACKETBUF_ATTR_ROUTING_SET, 1);
     	}
 #endif /* WITH_ORPL */
     }

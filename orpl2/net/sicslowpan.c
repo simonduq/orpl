@@ -1337,7 +1337,7 @@ packet_sent(void *ptr, int status, int transmissions)
   uip_ds6_link_neighbor_callback(status, transmissions);
 
 #if WITH_ORPL
-  if(packetbuf_attr(PACKETBUF_ATTR_SEND_BLOOM) == 1) {
+  if(packetbuf_attr(PACKETBUF_ATTR_ROUTING_SET) == 1) {
     routing_set_packet_sent(ptr, status, transmissions);
   }
 #endif /* WITH_ORPL */
