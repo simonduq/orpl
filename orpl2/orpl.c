@@ -1,40 +1,27 @@
-#include "deployment.h"
-#include "cooja-debug.h"
 #include "orpl.h"
 #include "orpl-anycast.h"
+#include "orpl-routing-set.h"
+#include "tools/deployment.h"
 #include "net/packetbuf.h"
-#include "net/rpl/rpl.h"
-#include "net/nbr-table.h"
 #include "net/simple-udp.h"
+#include "net/uip-ds6.h"
+#include "net/rpl/rpl-private.h"
+#include "lib/random.h"
+#include <string.h>
+
 #if IN_COOJA
 #define DEBUG DEBUG_ANNOTATE
 #else
 #define DEBUG DEBUG_NONE
 #endif
 #include "net/uip-debug.h"
-#include "net/uip-ds6.h"
-#include "orpl-routing-set.h"
-#include "node-id.h"
-#include "orpl-log.h"
-#include "random.h"
-#include "net/rpl/rpl-private.h"
-#include <string.h>
 
-#if IN_COOJA
-#define TEST_FALSE_POSITIVES 1
-#else
-#define TEST_FALSE_POSITIVES 0
-#endif
-
-#define ALL_NEIGHBORS_IN_FILTER 0
-
-#if (CMD_CYCLE_TIME >= 250)
-#define NEIGHBOR_PRR_THRESHOLD 50
-#else
+/* Insert even non-children neighbors in routing set */
+#define ALL_NEIGHBORS_IN_ROUTING_SET 1
+/* PRR threshold for considering a neighbor as usable */
 #define NEIGHBOR_PRR_THRESHOLD 35
-#endif
 
-/* For tests. When set:
+/* When set:
  * - stop updating EDC after N seconds
  * - start updating Routing sets only after N+1 seconds
  * - don't age routing sets */
@@ -50,19 +37,17 @@
 #define UPDATE_ROUTING_SET_MIN_TIME 0
 #endif
 
-#define ACKED_DOWN_SIZE 32
-
-#define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
-
+/* Rank changes of more than RANK_MAX_CHANGE trigger a trickle timer reset */
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)
 
-uint32_t orpl_broadcast_count = 0;
+#ifdef UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK
+#define LINK_NEIGHBOR_CALLBACK(addr, status, numtx) UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK(addr, status, numtx)
+void LINK_NEIGHBOR_CALLBACK(const rimeaddr_t *addr, int status, int numtx);
+#else
+#define LINK_NEIGHBOR_CALLBACK(addr, status, numtx)
+#endif /* UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK */
 
-void rpl_link_neighbor_callback(const rimeaddr_t *addr, int status, int numtx);
-static void check_neighbors(void);
-
-static rtimer_clock_t start_time;
-
+/* Set to 1 when only upwards routing is enabled */
 static int orpl_up_only = 0;
 
 #define ROUTING_SET_PORT 4444
@@ -89,6 +74,7 @@ uint32_t anycast_count_acked;
 int sending_routing_set = 0;
 
 static struct routing_set_broadcast_s routing_set_broadcast;
+#define ACKED_DOWN_SIZE 32
 static struct acked_down acked_down[ACKED_DOWN_SIZE];
 uint16_t last_broadcasted_rank = 0xffff;
 rpl_dag_t *curr_dag;
@@ -99,9 +85,12 @@ static void check_neighbors();
 static int test_prr(uint16_t count, uint16_t threshold);
 static void routing_set_request_broadcast();
 
-/* Routing set filter false positive black list */
+/* Routing set filter false positive blacklist */
 #define BLACKLIST_SIZE 16
 static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
+
+/* Global variable with the total number of broadcast sent */
+uint32_t orpl_broadcast_count = 0;
 
 void
 blacklist_insert(uint32_t seqno)
@@ -225,7 +214,7 @@ routing_set_add_neighbor(rimeaddr_t *neighbor_addr, const char *message)
   uint16_t neighbor_rank = rpl_get_parent_rank_default((uip_lladdr_t *)neighbor_addr, 0xffff);
   printf("Routing set: nbr rank %u\n", neighbor_rank);
   if(neighbor_rank != 0xffff
-#if (ALL_NEIGHBORS_IN_FILTER==0)
+#if (ALL_NEIGHBORS_IN_ROUTING_SET==0)
       && neighbor_rank > (curr_edc + EDC_W)
 #endif
       ) {
@@ -245,7 +234,7 @@ routing_set_packet_sent(void *ptr, int status, int transmissions)
   if(status == MAC_TX_COLLISION) {
     routing_set_request_broadcast();
    }
-  rpl_link_neighbor_callback(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), status, transmissions);
+  LINK_NEIGHBOR_CALLBACK(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), status, transmissions);
   check_neighbors();
 }
 
@@ -425,8 +414,6 @@ orpl_current_edc()
 void
 orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
 {
-  start_time = RTIMER_NOW();
-
   orpl_up_only = up_only;
 
   if(is_root) {
