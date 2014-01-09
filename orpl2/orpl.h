@@ -23,7 +23,7 @@ extern int neighbor_set_size;
 extern uint32_t anycast_count_incomming;
 extern uint32_t anycast_count_acked;
 extern uint32_t orpl_routing_set_merged_count;
-extern int sending_bloom;
+extern int sending_routing_set;
 extern uint32_t orpl_broadcast_count;
 
 void orpl_print_ranks();
@@ -41,6 +41,6 @@ void update_annotations();
 rpl_rank_t orpl_current_edc();
 void orpl_update_edc(rpl_rank_t edc);
 int orpl_is_root();
-void bloom_packet_sent(void *ptr, int status, int transmissions);
+void routing_set_packet_sent(void *ptr, int status, int transmissions);
 
 #endif /* __ORPL_H__ */

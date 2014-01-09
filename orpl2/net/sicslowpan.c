@@ -1338,7 +1338,7 @@ packet_sent(void *ptr, int status, int transmissions)
 
 #if WITH_ORPL
   if(packetbuf_attr(PACKETBUF_ATTR_SEND_BLOOM) == 1) {
-    bloom_packet_sent(ptr, status, transmissions);
+    routing_set_packet_sent(ptr, status, transmissions);
   }
 #endif /* WITH_ORPL */
 

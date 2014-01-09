@@ -36,7 +36,7 @@
 
 /* For tests. When set:
  * - stop updating EDC after N seconds
- * - start updating Bloom sets only after N+1 seconds
+ * - start updating Routing sets only after N+1 seconds
  * - don't age routing sets */
 #ifndef FREEZE_TOPOLOGY
 #define FREEZE_TOPOLOGY 1
@@ -67,12 +67,12 @@ static rtimer_clock_t start_time;
 static int orpl_up_only = 0;
 
 #define ROUTING_SET_PORT 4444
-static struct simple_udp_connection bloom_connection;
+static struct simple_udp_connection routing_set_connection;
 static uip_ipaddr_t routing_set_addr;
 
-struct bloom_broadcast_s {
+struct routing_set_broadcast_s {
   uint16_t magic; /* we need a magic number here as this goes straight on top of 15.4 mac
-   * and we need to way to check whether incoming data is a bloom broadcast or not */
+   * and we need to way to check whether incoming data is a routing set broadcast or not */
   uint16_t rank;
   union {
     routing_set filter;
@@ -89,20 +89,20 @@ uint32_t orpl_routing_set_merged_count = 0;
 uint32_t anycast_count_incomming;
 uint32_t anycast_count_acked;
 
-int sending_bloom = 0;
+int sending_routing_set = 0;
 
-static struct bloom_broadcast_s bloom_broadcast;
+static struct routing_set_broadcast_s routing_set_broadcast;
 static struct acked_down acked_down[ACKED_DOWN_SIZE];
 uint16_t last_broadcasted_rank = 0xffff;
 rpl_dag_t *curr_dag;
 rpl_instance_t *curr_instance;
-static struct ctimer broadcast_bloom_timer;
+static struct ctimer routing_set_broadcast_timer;
 
-void check_neighbors();
-int test_prr(uint16_t count, uint16_t threshold);
-void bloom_request_broadcast();
+static void check_neighbors();
+static int test_prr(uint16_t count, uint16_t threshold);
+static void routing_set_request_broadcast();
 
-/* Bloom filter false positive black list */
+/* Routing set filter false positive black list */
 #define BLACKLIST_SIZE 16
 static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
 
@@ -172,10 +172,10 @@ routing_set_received(struct simple_udp_connection *c,
          const uint8_t *payload,
          uint16_t datalen)
 {
-  struct bloom_broadcast_s *data = (struct bloom_broadcast_s *)payload;
+  struct routing_set_broadcast_s *data = (struct routing_set_broadcast_s *)payload;
 
   if(data->magic != BLOOM_MAGIC) {
-    printf("Bloom received with wrong magic number\n");
+    printf("Routing set received with wrong magic number\n");
     return;
   }
 
@@ -200,20 +200,20 @@ routing_set_received(struct simple_udp_connection *c,
   if(orpl_up_only == 0) {
     rpl_rank_t curr_edc = orpl_current_edc();
     uip_ipaddr_t sender_ipaddr;
-    /* Merge Bloom sets */
+    /* Merge Routing sets */
     if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > curr_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
       int bit_count_before = orpl_routing_set_count_bits();
       orpl_routing_set_insert(&sender_ipaddr);
-      printf("Routing set: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, orpl_routing_set_count_bits(), "bloom received");
-      orpl_routing_set_merge(((struct bloom_broadcast_s*)data)->filter, neighbor_id);
+      printf("Routing set: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, orpl_routing_set_count_bits(), "routing set received");
+      orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->filter, neighbor_id);
       int bit_count_after = orpl_routing_set_count_bits();
       printf("Routing set: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after);
       if(curr_instance && bit_count_after != bit_count_before) {
-        printf("Anycast: reset DIO timer (bloom received)\n");
+        printf("Anycast: reset DIO timer (routing set received)\n");
         //      bit_count_last = bit_count_after;
         //      rpl_reset_dio_timer(curr_instance);
-        bloom_request_broadcast();
+        routing_set_request_broadcast();
       }
       orpl_routing_set_merged_count++;
     }
@@ -221,7 +221,7 @@ routing_set_received(struct simple_udp_connection *c,
 }
 
 void
-anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message)
+routing_set_add_neighbor(rimeaddr_t *neighbor_addr, const char *message)
 {
   uip_ipaddr_t neighbor_ipaddr;
   uint16_t neighbor_id = node_id_from_rimeaddr(neighbor_addr);
@@ -248,43 +248,42 @@ anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message)
 }
 
 void
-bloom_packet_sent(void *ptr, int status, int transmissions)
+routing_set_packet_sent(void *ptr, int status, int transmissions)
 {
   if(status == MAC_TX_COLLISION) {
-    bloom_request_broadcast();
+    routing_set_request_broadcast();
    }
   rpl_link_neighbor_callback(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), status, transmissions);
   check_neighbors();
 }
 
 void
-bloom_do_broadcast(void *ptr)
+routing_set_do_broadcast(void *ptr)
 {
   if(FREEZE_TOPOLOGY && orpl_up_only && clock_seconds() <= UPDATE_ROUTING_SET_MIN_TIME) {
-    printf("Bloom size %u\n", sizeof(struct bloom_broadcast_s));
     printf("Routing set: requesting broadcast\n");
-    ctimer_set(&broadcast_bloom_timer, random_rand() % (32 * CLOCK_SECOND), bloom_do_broadcast, NULL);
+    ctimer_set(&routing_set_broadcast_timer, random_rand() % (32 * CLOCK_SECOND), routing_set_do_broadcast, NULL);
   } else {
     rpl_rank_t curr_edc = orpl_current_edc();
     /* Broadcast filter */
     last_broadcasted_rank = curr_edc;
-    bloom_broadcast.magic = BLOOM_MAGIC;
-    bloom_broadcast.rank = curr_edc;
-    memcpy(bloom_broadcast.filter, *orpl_routing_set_get_active(), sizeof(routing_set));
-    sending_bloom = 1;
+    routing_set_broadcast.magic = BLOOM_MAGIC;
+    routing_set_broadcast.rank = curr_edc;
+    memcpy(routing_set_broadcast.filter, *orpl_routing_set_get_active(), sizeof(routing_set));
+    sending_routing_set = 1;
 
-    printf("Routing set: do broadcast %u\n", bloom_broadcast.rank);
-    simple_udp_sendto(&bloom_connection, &bloom_broadcast, sizeof(struct bloom_broadcast_s), &routing_set_addr);
+    printf("Routing set: do broadcast %u\n", routing_set_broadcast.rank);
+    simple_udp_sendto(&routing_set_connection, &routing_set_broadcast, sizeof(struct routing_set_broadcast_s), &routing_set_addr);
 
-    sending_bloom = 0;
+    sending_routing_set = 0;
   }
 }
 
 void
-bloom_request_broadcast()
+routing_set_request_broadcast()
 {
   printf("Routing set: requesting broadcast\n");
-  ctimer_set(&broadcast_bloom_timer, random_rand() % (4 * NETSTACK_RDC.channel_check_interval()), bloom_do_broadcast, NULL);
+  ctimer_set(&routing_set_broadcast_timer, random_rand() % (4 * NETSTACK_RDC.channel_check_interval()), routing_set_do_broadcast, NULL);
 }
 
 void
@@ -298,12 +297,12 @@ orpl_trickle_callback(rpl_instance_t *instance)
     check_neighbors();
 
 #if !FREEZE_TOPOLOGY
-    /* Bloom filter ageing */
+    /* Routing set filter ageing */
     printf("Routing set: swapping\n");
     orpl_routing_set_swap();
 #endif
 
-    bloom_request_broadcast();
+    routing_set_request_broadcast();
 
     //  int bit_count_current = orpl_routing_set_count_bits();
     //  if(curr_instance && bit_count_current != bit_count_last) {
@@ -328,7 +327,7 @@ check_neighbors()
           p = nbr_table_next(rpl_parents, p)) {
       uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents, p));
       if(neighbor_id != 0) {
-        anycast_add_neighbor_to_bloom(nbr_table_get_lladdr(rpl_parents, p), "broadcast done");
+        routing_set_add_neighbor(nbr_table_get_lladdr(rpl_parents, p), "broadcast done");
       }
     }
   }
@@ -452,7 +451,7 @@ orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
 
   /* Set up multicast UDP connectoin for dissemination of routing sets */
   uip_create_linklocal_allnodes_mcast(&routing_set_addr);
-  simple_udp_register(&bloom_connection, ROUTING_SET_PORT,
+  simple_udp_register(&routing_set_connection, ROUTING_SET_PORT,
                         NULL, ROUTING_SET_PORT,
                         routing_set_received);
 

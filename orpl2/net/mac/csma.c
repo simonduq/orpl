@@ -341,7 +341,7 @@ send_packet(mac_callback_t sent, void *ptr)
     		&rimeaddr_null)) {
 #if WITH_ORPL
     	ORPL_LOG("Csma: send broadcast (%u bytes)\n", packetbuf_datalen());
-    	if(sending_bloom) {
+    	if(sending_routing_set) {
     		packetbuf_set_attr(PACKETBUF_ATTR_SEND_BLOOM, 1);
     	}
 #endif /* WITH_ORPL */
