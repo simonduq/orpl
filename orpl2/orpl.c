@@ -54,7 +54,6 @@
 
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 
-#define BLOOM_MAGIC 0x83d9
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)
 
 uint32_t orpl_broadcast_count = 0;
@@ -71,8 +70,6 @@ static struct simple_udp_connection routing_set_connection;
 static uip_ipaddr_t routing_set_addr;
 
 struct routing_set_broadcast_s {
-  uint16_t magic; /* we need a magic number here as this goes straight on top of 15.4 mac
-   * and we need to way to check whether incoming data is a routing set broadcast or not */
   uint16_t rank;
   union {
     routing_set filter;
@@ -174,11 +171,6 @@ routing_set_received(struct simple_udp_connection *c,
 {
   struct routing_set_broadcast_s *data = (struct routing_set_broadcast_s *)payload;
 
-  if(data->magic != BLOOM_MAGIC) {
-    printf("Routing set received with wrong magic number\n");
-    return;
-  }
-
   uint16_t neighbor_id = node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER));
   if(neighbor_id == 0) {
     return;
@@ -267,7 +259,6 @@ routing_set_do_broadcast(void *ptr)
     rpl_rank_t curr_edc = orpl_current_edc();
     /* Broadcast filter */
     last_broadcasted_rank = curr_edc;
-    routing_set_broadcast.magic = BLOOM_MAGIC;
     routing_set_broadcast.rank = curr_edc;
     memcpy(routing_set_broadcast.filter, *orpl_routing_set_get_active(), sizeof(routing_set));
     sending_routing_set = 1;
