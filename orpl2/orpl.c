@@ -44,11 +44,11 @@
 #endif
 
 #if FREEZE_TOPOLOGY
-#define UPDATE_EDC_MAX_TIME 1
-#define UPDATE_BLOOM_MIN_TIME 2
+#define UPDATE_EDC_MAX_TIME 1*60
+#define UPDATE_ROUTING_SET_MIN_TIME 2*60
 #else
 #define UPDATE_EDC_MAX_TIME 0
-#define UPDATE_BLOOM_MIN_TIME 0
+#define UPDATE_ROUTING_SET_MIN_TIME 0
 #endif
 
 #define ACKED_DOWN_SIZE 32
@@ -61,7 +61,6 @@
 uint32_t orpl_broadcast_count = 0;
 
 int is_node_addressable(uip_ipaddr_t *ipv6);
-int time_elapsed();
 void rpl_link_neighbor_callback(const rimeaddr_t *addr, int status, int numtx);
 static void check_neighbors(void);
 
@@ -161,7 +160,7 @@ int
 test_prr(uint16_t count, uint16_t threshold)
 {
   if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
-    return time_elapsed() > UPDATE_BLOOM_MIN_TIME && orpl_broadcast_count >= 4 && (100*count/orpl_broadcast_count >= threshold);
+    return clock_seconds() > UPDATE_ROUTING_SET_MIN_TIME && orpl_broadcast_count >= 4 && (100*count/orpl_broadcast_count >= threshold);
   } else {
     return orpl_broadcast_count >= 4 && (100*count/orpl_broadcast_count >= threshold);
   }
@@ -268,7 +267,7 @@ bloom_packet_sent(void *ptr, int status, int transmissions)
 void
 bloom_do_broadcast(void *ptr)
 {
-  if(FREEZE_TOPOLOGY && orpl_up_only && time_elapsed() <= UPDATE_BLOOM_MIN_TIME) {
+  if(FREEZE_TOPOLOGY && orpl_up_only && clock_seconds() <= UPDATE_ROUTING_SET_MIN_TIME) {
     printf("Bloom size %u\n", sizeof(struct bloom_broadcast_s));
     printf("Bloom: requesting broadcast\n");
     ctimer_set(&broadcast_bloom_timer, random_rand() % (32 * CLOCK_SECOND), bloom_do_broadcast, NULL);
@@ -414,7 +413,7 @@ int
 orpl_is_topology_frozen()
 {
   if(FREEZE_TOPOLOGY && orpl_up_only == 0) {
-    if(time_elapsed() > UPDATE_EDC_MAX_TIME) {
+    if(clock_seconds() > UPDATE_EDC_MAX_TIME) {
       return 1;
     }
   }
@@ -438,12 +437,6 @@ orpl_current_edc()
 {
   rpl_dag_t *dag = rpl_get_any_dag();
   return dag == NULL ? 0xffff : dag->rank;
-}
-
-int
-time_elapsed()
-{
-  return (RTIMER_NOW()-start_time)/(RTIMER_ARCH_SECOND*60);
 }
 
 /* ORPL initialization */
