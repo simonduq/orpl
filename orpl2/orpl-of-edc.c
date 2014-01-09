@@ -140,7 +140,7 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
     return prev_edc;
   }
 
-  if(is_edc_root) {
+  if(orpl_is_root()) {
     return 0;
   }
 

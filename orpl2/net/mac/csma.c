@@ -282,7 +282,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
           queuebuf_update_attr_from_packetbuf(q->buf);
         } else {
 #if WITH_ORPL && BLOOM_FP_RECOVERY
-        	if(!is_edc_root && packetbuf_attr(PACKETBUF_ATTR_GOING_UP) == 0) { /* Failed downwards transmission. Trigger false positive recovery. */
+        	if(!orpl_is_root() && packetbuf_attr(PACKETBUF_ATTR_GOING_UP) == 0) { /* Failed downwards transmission. Trigger false positive recovery. */
         		//TODO ORPL: don't use dataptr (r seqno, rw fpcount)
         		struct app_data *dataptr = appdataptr_from_packetbuf();
         		struct app_data data;

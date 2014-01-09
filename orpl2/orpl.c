@@ -8,7 +8,6 @@
 #include "net/simple-udp.h"
 #if IN_COOJA
 #define DEBUG DEBUG_ANNOTATE
-//#define DEBUG DEBUG_NONE
 #else
 #define DEBUG DEBUG_NONE
 #endif
@@ -60,7 +59,6 @@
 
 uint32_t orpl_broadcast_count = 0;
 
-int is_node_addressable(uip_ipaddr_t *ipv6);
 void rpl_link_neighbor_callback(const rimeaddr_t *addr, int status, int numtx);
 static void check_neighbors(void);
 
@@ -92,7 +90,6 @@ uint32_t anycast_count_incomming;
 uint32_t anycast_count_acked;
 
 int sending_bloom = 0;
-int is_edc_root = 0;
 
 static struct bloom_broadcast_s bloom_broadcast;
 static struct acked_down acked_down[ACKED_DOWN_SIZE];
@@ -207,10 +204,8 @@ routing_set_received(struct simple_udp_connection *c,
     if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > curr_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
       int bit_count_before = orpl_routing_set_count_bits();
-      if(is_node_addressable(&sender_ipaddr)) {
-        orpl_routing_set_insert(&sender_ipaddr);
-        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, orpl_routing_set_count_bits(), "bloom received");
-      }
+      orpl_routing_set_insert(&sender_ipaddr);
+      printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, orpl_routing_set_count_bits(), "bloom received");
       orpl_routing_set_merge(((struct bloom_broadcast_s*)data)->filter, neighbor_id);
       int bit_count_after = orpl_routing_set_count_bits();
       printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after);
@@ -244,12 +239,10 @@ anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message)
       ) {
     set_ipaddr_from_id(&neighbor_ipaddr, neighbor_id);
     if(test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
-      if(is_node_addressable(&neighbor_ipaddr)) {
-        int bit_count_before = orpl_routing_set_count_bits();
-        orpl_routing_set_insert(&neighbor_ipaddr);
-        int bit_count_after = orpl_routing_set_count_bits();
-        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after, message);
-      }
+      int bit_count_before = orpl_routing_set_count_bits();
+      orpl_routing_set_insert(&neighbor_ipaddr);
+      int bit_count_after = orpl_routing_set_count_bits();
+      printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after, message);
     }
   }
 }
@@ -380,8 +373,7 @@ is_reachable_neighbor(uip_ipaddr_t *ipv6)
   return 0;
 }
 
-/* General ORPL stuff */
-
+/* Update the current EDC (rank of the node) */
 void
 orpl_update_edc(rpl_rank_t edc)
 {
@@ -401,14 +393,17 @@ orpl_update_edc(rpl_rank_t edc)
     rpl_reset_dio_timer(curr_instance);
   }
 
+  /* Update EDC annotation */
   if(edc != curr_edc) {
     ANNOTATE("#A rank=%u.%u\n", edc/EDC_DIVISOR,
         (10 * (edc % EDC_DIVISOR)) / EDC_DIVISOR);
   }
 
+  /* Update EDC */
   curr_edc = edc;
 }
 
+/* Returns 1 if the topology is frozen, i.e. we are not allowed to change rank */
 int
 orpl_is_topology_frozen()
 {
@@ -420,18 +415,14 @@ orpl_is_topology_frozen()
   return 0;
 }
 
-int
-is_node_addressable(uip_ipaddr_t *ipv6)
-{
-  return 1;
-}
-
+/* Returns 1 if the node is root of ORPL */
 int
 orpl_is_root()
 {
   return orpl_current_edc() == 0;
 }
 
+/* Returns current EDC of the node */
 rpl_rank_t
 orpl_current_edc()
 {
@@ -445,10 +436,9 @@ orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
 {
   start_time = RTIMER_NOW();
 
-  is_edc_root = is_root;
   orpl_up_only = up_only;
 
-  if(is_edc_root) {
+  if(is_root) {
     ANNOTATE("#A color=red\n");
     ANNOTATE("#A rank=0.0\n");
     /* Set root EDC to 0 */

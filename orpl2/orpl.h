@@ -24,7 +24,6 @@ extern uint32_t anycast_count_incomming;
 extern uint32_t anycast_count_acked;
 extern uint32_t orpl_routing_set_merged_count;
 extern int sending_bloom;
-extern int is_edc_root;
 extern uint32_t orpl_broadcast_count;
 
 void orpl_print_ranks();
