@@ -14,7 +14,7 @@
 #endif
 #include "net/uip-debug.h"
 #include "net/uip-ds6.h"
-#include "routing-set.h"
+#include "orpl-routing-set.h"
 #include "node-id.h"
 #include "orpl-log.h"
 #include "random.h"
@@ -71,7 +71,7 @@ static int orpl_up_only = 0;
 
 #define UDP_PORT 4444
 static struct simple_udp_connection bloom_connection;
-static uip_ipaddr_t bloom_addr;
+static uip_ipaddr_t routing_set_mcast_addr;
 
 struct bloom_broadcast_s {
   uint16_t magic; /* we need a magic number here as this goes straight on top of 15.4 mac
@@ -88,7 +88,7 @@ struct acked_down {
   uint16_t id;
 };
 
-uint32_t routing_set_merged_count = 0;
+uint32_t orpl_routing_set_merged_count = 0;
 uint32_t anycast_count_incomming;
 uint32_t anycast_count_acked;
 
@@ -212,13 +212,13 @@ bloom_received(struct bloom_broadcast_s *data)
     /* Merge Bloom sets */
     if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > curr_edc && test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
-      int bit_count_before = routing_set_count_bits();
+      int bit_count_before = orpl_routing_set_count_bits();
       if(is_node_addressable(&sender_ipaddr)) {
-        routing_set_insert(&sender_ipaddr);
-        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, routing_set_count_bits(), "bloom received");
+        orpl_routing_set_insert(&sender_ipaddr);
+        printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, orpl_routing_set_count_bits(), "bloom received");
       }
-      routing_set_merge(((struct bloom_broadcast_s*)data)->filter, neighbor_id);
-      int bit_count_after = routing_set_count_bits();
+      orpl_routing_set_merge(((struct bloom_broadcast_s*)data)->filter, neighbor_id);
+      int bit_count_after = orpl_routing_set_count_bits();
       printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after);
       if(curr_instance && bit_count_after != bit_count_before) {
         printf("Anycast: reset DIO timer (bloom received)\n");
@@ -226,7 +226,7 @@ bloom_received(struct bloom_broadcast_s *data)
         //      rpl_reset_dio_timer(curr_instance);
         bloom_request_broadcast();
       }
-      routing_set_merged_count++;
+      orpl_routing_set_merged_count++;
     }
   }
 }
@@ -251,9 +251,9 @@ anycast_add_neighbor_to_bloom(rimeaddr_t *neighbor_addr, const char *message)
     set_ipaddr_from_id(&neighbor_ipaddr, neighbor_id);
     if(test_prr(count, NEIGHBOR_PRR_THRESHOLD)) {
       if(is_node_addressable(&neighbor_ipaddr)) {
-        int bit_count_before = routing_set_count_bits();
-        routing_set_insert(&neighbor_ipaddr);
-        int bit_count_after = routing_set_count_bits();
+        int bit_count_before = orpl_routing_set_count_bits();
+        orpl_routing_set_insert(&neighbor_ipaddr);
+        int bit_count_after = orpl_routing_set_count_bits();
         printf("Bloom: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after, message);
       }
     }
@@ -283,11 +283,11 @@ bloom_do_broadcast(void *ptr)
     last_broadcasted_rank = curr_edc;
     bloom_broadcast.magic = BLOOM_MAGIC;
     bloom_broadcast.rank = curr_edc;
-    memcpy(bloom_broadcast.filter, *routing_set_get_active(), sizeof(routing_set));
+    memcpy(bloom_broadcast.filter, *orpl_routing_set_get_active(), sizeof(routing_set));
     sending_bloom = 1;
 
     printf("Bloom: do broadcast %u\n", bloom_broadcast.rank);
-    simple_udp_sendto(&bloom_connection, &bloom_broadcast, sizeof(struct bloom_broadcast_s), &bloom_addr);
+    simple_udp_sendto(&bloom_connection, &bloom_broadcast, sizeof(struct bloom_broadcast_s), &routing_set_mcast_addr);
 
     sending_bloom = 0;
   }
@@ -312,12 +312,12 @@ orpl_trickle_callback(rpl_instance_t *instance){
 #if !FREEZE_TOPOLOGY
     /* Bloom filter ageing */
     printf("Bloom: swapping\n");
-    routing_set_swap();
+    orpl_routing_set_swap();
 #endif
 
     bloom_request_broadcast();
 
-    //  int bit_count_current = routing_set_count_bits();
+    //  int bit_count_current = orpl_routing_set_count_bits();
     //  if(curr_instance && bit_count_current != bit_count_last) {
     //    printf("Anycast: reset DIO timer (trickle callback)\n");
     //    rpl_reset_dio_timer(curr_instance);
@@ -451,25 +451,28 @@ time_elapsed()
   return (RTIMER_NOW()-start_time)/(RTIMER_ARCH_SECOND*60);
 }
 
-void anycast_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
+/* ORPL initialization */
+void
+orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
 {
-
-  orpl_anycast_init(global_ipaddr);
-
   start_time = RTIMER_NOW();
 
-  orpl_up_only = up_only;
-
   is_edc_root = is_root;
+  orpl_up_only = up_only;
 
   if(is_edc_root) {
     ANNOTATE("#A color=red\n");
     ANNOTATE("#A rank=0.0\n");
+    /* Set root EDC to 0 */
     orpl_update_edc(0);
   }
-  routing_set_init();
 
-  uip_create_linklocal_allnodes_mcast(&bloom_addr);
+  /* Initializa anycast and routing set modules */
+  orpl_anycast_init(global_ipaddr);
+  orpl_routing_set_init();
+
+  /* Set up multicast UDP connectoin for dissemination of routing sets */
+  uip_create_linklocal_allnodes_mcast(&routing_set_mcast_addr);
   simple_udp_register(&bloom_connection, UDP_PORT,
                         NULL, UDP_PORT,
                         bloom_udp_received);

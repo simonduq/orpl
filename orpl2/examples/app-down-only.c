@@ -101,7 +101,7 @@ int check_reachable_count() {
       continue;
     }
     set_ipaddr_from_id(&dest_ipaddr, id);
-    if(routing_set_contains(&dest_ipaddr)) {
+    if(orpl_routing_set_contains(&dest_ipaddr)) {
       count++;
     }
   }
@@ -134,7 +134,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
   printf("App: %u starting\n", node_id);
 
   deployment_init(&global_ipaddr);
-  anycast_init(&global_ipaddr, node_id == ROOT_ID, 0);
+  orpl_init(&global_ipaddr, node_id == ROOT_ID, 0);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 

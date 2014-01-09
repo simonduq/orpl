@@ -6,7 +6,7 @@
 #include "net/mac/frame802154.h"
 #include "net/uip-ds6.h"
 #include "orpl-log.h"
-#include "routing-set.h"
+#include "orpl-routing-set.h"
 
 #define EDC_DIVISOR 128
 #define EDC_TICKS_TO_METRIC(edc) (uint16_t)((edc) / (CONTIKIMAC_CONF_CYCLE_TIME / EDC_DIVISOR))
@@ -22,7 +22,7 @@ extern int forwarder_set_size;
 extern int neighbor_set_size;
 extern uint32_t anycast_count_incomming;
 extern uint32_t anycast_count_acked;
-extern uint32_t routing_set_merged_count;
+extern uint32_t orpl_routing_set_merged_count;
 extern int sending_bloom;
 extern int is_edc_root;
 extern uint32_t orpl_broadcast_count;
@@ -36,7 +36,7 @@ void blacklist_insert(uint32_t seqno);
 int blacklist_contains(uint32_t seqno);
 void acked_down_insert(uint32_t seqno, uint16_t id);
 int acked_down_contains(uint32_t seqno, uint16_t id);
-void anycast_init(const uip_ipaddr_t *my_ipaddr, int is_root, int up_only);
+void orpl_init(const uip_ipaddr_t *my_ipaddr, int is_root, int up_only);
 int orpl_is_topology_frozen();
 void update_annotations();
 rpl_rank_t orpl_current_edc();

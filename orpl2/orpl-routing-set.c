@@ -39,7 +39,7 @@
  */
 
 #include "net/uip.h"
-#include "routing-set.h"
+#include "orpl-routing-set.h"
 #include "node-id.h"
 #include <string.h>
 #include <stdio.h>
@@ -102,20 +102,20 @@ rs_get_bit(routing_set rs, int i) {
 
 /* Initializes the global double routing set */
 void
-routing_set_init()
+orpl_routing_set_init()
 {
   memset(routing_sets, 0, sizeof(routing_sets));
 }
 
 /* Returns a pointer to the currently active routing set */
 routing_set *
-routing_set_get_active() {
+orpl_routing_set_get_active() {
   return &routing_sets[active_index];
 }
 
 /* Inserts a global IPv6 in the global double routing set */
 void
-routing_set_insert(const uip_ipaddr_t *ipv6)
+orpl_routing_set_insert(const uip_ipaddr_t *ipv6)
 {
   int k;
   uint64_t hash = get_hash(ipv6);
@@ -129,7 +129,7 @@ routing_set_insert(const uip_ipaddr_t *ipv6)
 
 /* Merges a routing set into our global double routing set */
 void
-routing_set_merge(routing_set rs, uint16_t id)
+orpl_routing_set_merge(routing_set rs, uint16_t id)
 {
   int i;
   for(i=0; i<sizeof(routing_set); i++) {
@@ -142,7 +142,7 @@ routing_set_merge(routing_set rs, uint16_t id)
 
 /* Checks if our global double bloom filter contains an given IPv6 */
 int
-routing_set_contains(const uip_ipaddr_t *ipv6)
+orpl_routing_set_contains(const uip_ipaddr_t *ipv6)
 {
   int k;
   int contains = 1;
@@ -150,7 +150,7 @@ routing_set_contains(const uip_ipaddr_t *ipv6)
   /* For each hash, check a bit in the bloom filter */
   for(k=0; k<ROUTING_SET_K; k++) {
     /* Check against the active routing set */
-    if(rs_get_bit(*routing_set_get_active(), hash % ROUTING_SET_M) == 0) {
+    if(rs_get_bit(*orpl_routing_set_get_active(), hash % ROUTING_SET_M) == 0) {
       /* If one bucket is empty, then the element isn't included in the filter */
       contains = 0;
       break;
@@ -162,7 +162,7 @@ routing_set_contains(const uip_ipaddr_t *ipv6)
 
 /* Swap active and warmup routing sets for ageing */
 void
-routing_set_swap()
+orpl_routing_set_swap()
 {
   /* Swap active flag */
   active_index = 1 - active_index;
@@ -172,12 +172,12 @@ routing_set_swap()
 
 /* Returns the number of bits set in the active routing set */
 int
-routing_set_count_bits()
+orpl_routing_set_count_bits()
 {
   int i;
     int cnt = 0;
     for(i=0; i<ROUTING_SET_M; i++) {
-      if(rs_get_bit(*routing_set_get_active(), i)) {
+      if(rs_get_bit(*orpl_routing_set_get_active(), i)) {
         cnt++;
       }
     }
@@ -186,16 +186,16 @@ routing_set_count_bits()
 
 /* Prints out the content of the active routing set */
 void
-routing_set_print()
+orpl_routing_set_print()
 {
-  printf("Routing set: bits set %d/%d\n", routing_set_count_bits(), ROUTING_SET_M);
+  printf("Routing set: bits set %d/%d\n", orpl_routing_set_count_bits(), ROUTING_SET_M);
   printf("Routing set: start\n");
   int i;
   for(i=0; i<ROUTING_SET_M/8; i++) {
     if(i%16 == 0) {
       printf("Routing set: [%2u] ", i/16);
     }
-    printf("%02x ", *routing_set_get_active()[i]);
+    printf("%02x ", *orpl_routing_set_get_active()[i]);
     if(i%16 == 15) {
       printf("\n");
     }

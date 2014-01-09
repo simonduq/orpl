@@ -38,8 +38,8 @@
  * \author Simon Duquennoy <simonduq@sics.se>
  */
 
-#ifndef __routing_set_H__
-#define __routing_set_H__
+#ifndef __orpl_routing_set_H__
+#define __orpl_routing_set_H__
 
 #include "contiki.h"
 
@@ -84,23 +84,23 @@
 typedef unsigned char routing_set[ROUTING_SET_M / 8];
 
 /* Initializes the global double routing set */
-void routing_set_init();
+void orpl_routing_set_init();
 /* Returns a pointer to the currently active routing set */
-routing_set * routing_set_get_active();
+routing_set * orpl_routing_set_get_active();
 /* Inserts a global IPv6 in the global double routing set */
-void routing_set_insert(const uip_ipaddr_t *ipv6);
+void orpl_routing_set_insert(const uip_ipaddr_t *ipv6);
 /* Merges a routing set into our global double routing set */
-void routing_set_merge(routing_set rs, uint16_t id);
+void orpl_routing_set_merge(routing_set rs, uint16_t id);
 /* Checks if our global double bloom filter contains an given IPv6 */
-int routing_set_contains(const uip_ipaddr_t *ipv6);
+int orpl_routing_set_contains(const uip_ipaddr_t *ipv6);
 /* Swap active and warmup routing sets for ageing */
-void routing_set_swap();
+void orpl_routing_set_swap();
 /* Returns the number of bits set in the active routing set */
-int routing_set_count_bits();
+int orpl_routing_set_count_bits();
 /* Prints out the content of the active routing set */
-void routing_set_print();
+void orpl_routing_set_print();
 
-#endif /* __routing_set_H__ */
+#endif /* __orpl_routing_set_H__ */
 
 /*
  * Some basics about Bloom Filter

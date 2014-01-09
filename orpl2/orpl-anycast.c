@@ -257,7 +257,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
         } else {
           /* We don't route upwards, now check if we are a common ancester of the source
            * and destination. We do this by checking our routing set against the destination. */
-          if(!blacklist_contains(seqno) && routing_set_contains(&dest_ipv6)) {
+          if(!blacklist_contains(seqno) && orpl_routing_set_contains(&dest_ipv6)) {
             /* Traffic is going up but we have destination in our routing set.
              * Ack it and start routing downwards (towards the destination) */
             do_ack = DO_ACK;
@@ -266,7 +266,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
       } else if(anycast_direction == direction_down) {
         /* Routing downwards. ACK if we have a worse rank and destination is in subdodag */
         if(curr_edc > EDC_W && curr_edc - EDC_W > current_edc
-            && !blacklist_contains(seqno) && routing_set_contains(&dest_ipv6)) {
+            && !blacklist_contains(seqno) && orpl_routing_set_contains(&dest_ipv6)) {
           do_ack = DO_ACK;
         }
       } else if(anycast_direction == direction_recover) {
