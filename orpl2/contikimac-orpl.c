@@ -833,7 +833,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
             dest = (rimeaddr_t *)(ackbuf+3);
             uint16_t neighbor_rank = (ackbuf[3+8+1]<<8) + ackbuf[3+8];
             rpl_set_parent_rank((uip_lladdr_t *)dest, neighbor_rank);
-            broadcast_acked(dest);
+            orpl_broadcast_acked(dest);
           } else {
           /* Received ack for anycast, stop strobing */
             got_strobe_ack++;
@@ -852,7 +852,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
   }
 
   if(is_broadcast) {
-	  broadcast_done();
+	  orpl_broadcast_done();
   }
 
   uint16_t strobe_duration = EDC_TICKS_TO_METRIC(RTIMER_NOW() - t0);

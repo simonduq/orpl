@@ -71,8 +71,8 @@ extern uint32_t orpl_broadcast_count;
 void orpl_print_ranks();
 int is_reachable_neighbor(const uip_ipaddr_t *ipaddr);
 void orpl_trickle_callback(rpl_instance_t *instance);
-void broadcast_acked(const rimeaddr_t *receiver);
-void broadcast_done();
+void orpl_broadcast_acked(const rimeaddr_t *receiver);
+void orpl_broadcast_done();
 void orpl_blacklist_insert(uint32_t seqno);
 int blacklist_contains(uint32_t seqno);
 void acked_down_insert(uint32_t seqno, uint16_t id);
@@ -83,6 +83,6 @@ void update_annotations();
 rpl_rank_t orpl_current_edc();
 void orpl_update_edc(rpl_rank_t edc);
 int orpl_is_root();
-void routing_set_packet_sent(void *ptr, int status, int transmissions);
+void orpl_routing_set_sent(void *ptr, int status, int transmissions);
 
 #endif /* __ORPL_H__ */

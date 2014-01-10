@@ -40,7 +40,6 @@
 #include "orpl.h"
 #include "orpl-anycast.h"
 #include "orpl-routing-set.h"
-#include "tools/deployment.h"
 #include "net/packetbuf.h"
 #include "net/simple-udp.h"
 #include "net/uip-ds6.h"
@@ -78,13 +77,6 @@
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)
 /* The last boradcasted EDC */
 static uint16_t last_broadcasted_edc = 0xffff;
-
-#ifdef UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK
-#define LINK_NEIGHBOR_CALLBACK(addr, status, numtx) UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK(addr, status, numtx)
-void LINK_NEIGHBOR_CALLBACK(const rimeaddr_t *addr, int status, int numtx);
-#else
-#define LINK_NEIGHBOR_CALLBACK(addr, status, numtx)
-#endif /* UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK */
 
 /* The IPv6 prefix in use */
 uip_ipaddr_t prefix;
@@ -260,7 +252,7 @@ static void
 request_routing_set_broadcast()
 {
   ORPL_LOG("ORPL: requesting routing set broadcast\n");
-  ctimer_set(&routing_set_broadcast_timer, random_rand() % (16 * CLOCK_SECOND), broadcast_routing_set, NULL);
+  ctimer_set(&routing_set_broadcast_timer, random_rand() % (32 * CLOCK_SECOND), broadcast_routing_set, NULL);
 }
 
 /* Broadcast our routing set to all neighbors */
@@ -284,6 +276,15 @@ broadcast_routing_set(void *ptr)
     sending_routing_set = 1;
     simple_udp_sendto(&routing_set_connection, &routing_set_broadcast, sizeof(struct routing_set_broadcast_s), &routing_set_addr);
     sending_routing_set = 0;
+  }
+}
+
+/* Callback function called after routing set transmissions */
+void
+orpl_routing_set_sent(void *ptr, int status, int transmissions)
+{
+  if(status == MAC_TX_COLLISION) {
+    request_routing_set_broadcast();
   }
 }
 
@@ -333,11 +334,47 @@ udp_received_routing_set(struct simple_udp_connection *c,
   }
 }
 
-/* Loop over all neighbors and insert the reachable ones into
-   out routing set */
-static void
-insert_reachable_neighbors()
+/* Function called when the trickle timer expires */
+void
+orpl_trickle_callback(rpl_instance_t *instance)
 {
+  curr_instance = instance;
+
+  if(orpl_are_routing_set_active()) {
+    /* Swap routing sets to implement ageing */
+    ORPL_LOG("ORPL: swapping routing sets\n");
+    orpl_routing_set_swap();
+
+    /* Request transmission of routing set */
+    request_routing_set_broadcast();
+  }
+
+  /* We recalculate the ranks periodically */
+  rpl_recalculate_ranks();
+}
+
+/* Callback function for every ACK received while broadcasting.
+ * Used for beacon counting. */
+void
+orpl_broadcast_acked(const rimeaddr_t *receiver)
+{
+  uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)receiver, 0) + 1;
+  if(count > orpl_broadcast_count+1) {
+    count = orpl_broadcast_count+1;
+  }
+  rpl_set_parent_bc_ackcount((uip_lladdr_t *)receiver, count);
+}
+
+/* Callback function at the end of a every broadcast
+ * Used for beacon counting. */
+void
+orpl_broadcast_done()
+{
+  /* Update global broacast count */
+  orpl_broadcast_count++;
+
+  /* Loop over all neighbors and insert the reachable ones into
+     out routing set */
   if(orpl_are_routing_set_active()) {
     rpl_parent_t *p;
     for(p = nbr_table_head(rpl_parents);
@@ -355,58 +392,6 @@ insert_reachable_neighbors()
       }
     }
   }
-}
-
-void
-routing_set_packet_sent(void *ptr, int status, int transmissions)
-{
-  if(status == MAC_TX_COLLISION) {
-    request_routing_set_broadcast();
-  }
-  LINK_NEIGHBOR_CALLBACK(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), status, transmissions);
-  insert_reachable_neighbors();
-}
-
-void
-orpl_trickle_callback(rpl_instance_t *instance)
-{
-  ORPL_LOG_NULL("Anycast: trickle callback");
-  curr_instance = instance;
-
-  if(orpl_up_only == 0) {
-    insert_reachable_neighbors();
-
-#if !FREEZE_TOPOLOGY
-    /* Routing set filter ageing */
-    ORPL_LOG("Routing set: swapping\n");
-    orpl_routing_set_swap();
-#endif
-
-    request_routing_set_broadcast();
-  }
-
-  /* We recalculate the ranks periodically */
-  rpl_recalculate_ranks();
-}
-
-void
-broadcast_acked(const rimeaddr_t *receiver)
-{
-  uint16_t neighbor_id = node_id_from_rimeaddr(receiver);
-  if(neighbor_id != 0) {
-    uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)receiver, 0) + 1;
-    if(count > orpl_broadcast_count+1) {
-      count = orpl_broadcast_count+1;
-    }
-    rpl_set_parent_bc_ackcount((uip_lladdr_t *)receiver, count);
-  }
-}
-
-void
-broadcast_done()
-{
-  ORPL_LOG("Anycast: broadcast done\n");
-  orpl_broadcast_count++;
 }
 
 /* Update the current EDC (rank of the node) */
