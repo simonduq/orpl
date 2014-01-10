@@ -129,7 +129,7 @@ orpl_routing_set_insert(const uip_ipaddr_t *ipv6)
 
 /* Merges a routing set into our global double routing set */
 void
-orpl_routing_set_merge(routing_set rs, uint16_t id)
+orpl_routing_set_merge(routing_set rs)
 {
   int i;
   for(i=0; i<sizeof(routing_set); i++) {

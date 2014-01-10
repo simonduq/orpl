@@ -64,5 +64,7 @@ void log_appdataptr(struct app_data *dataptr);
 #define ORPL_LOG_NULL(...) ORPL_LOG_FROM_APPDATAPTR(NULL, __VA_ARGS__)
 #define ORPL_LOG_FROM_UIP(...) ORPL_LOG_FROM_APPDATAPTR(appdataptr_from_uip(), __VA_ARGS__)
 #define ORPL_LOG_FROM_PACKETBUF(...) ORPL_LOG_FROM_APPDATAPTR(appdataptr_from_packetbuf(), __VA_ARGS__)
+#define ORPL_LOG_IPADDR(addr) uip_debug_ipaddr_print(addr)
+#define ORPL_LOG_LLADDR(addr) uip_debug_lladdr_print(addr)
 
 #endif /* ORPL_LOG */

@@ -90,7 +90,7 @@ routing_set * orpl_routing_set_get_active();
 /* Inserts a global IPv6 in the global double routing set */
 void orpl_routing_set_insert(const uip_ipaddr_t *ipv6);
 /* Merges a routing set into our global double routing set */
-void orpl_routing_set_merge(routing_set rs, uint16_t id);
+void orpl_routing_set_merge(routing_set rs);
 /* Checks if our global double bloom filter contains an given IPv6 */
 int orpl_routing_set_contains(const uip_ipaddr_t *ipv6);
 /* Swap active and warmup routing sets for ageing */

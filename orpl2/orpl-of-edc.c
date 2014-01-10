@@ -208,7 +208,7 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
   PRINTF("ORPL: final edc %u\n", edc);
 
   if(edc != prev_edc) {
-    ANNOTATE("#A rank=%u.%u\n", edc/EDC_DIVISOR,
+    ANNOTATE("#A edc=%u.%u\n", edc/EDC_DIVISOR,
         (10 * (edc % EDC_DIVISOR)) / EDC_DIVISOR);
   }
 

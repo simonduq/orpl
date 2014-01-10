@@ -148,9 +148,10 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 
       if(check_reachable_count()) {
         static uint16_t target_id;
+        static uint16_t i;
         do {
-          get_node_id_from_index(target_id++);
-          target_id %= get_n_nodes();
+          target_id = get_node_id_from_index(i++);
+          i %= get_n_nodes();
         } while (target_id == ROOT_ID);
         app_send_to(target_id);
       }

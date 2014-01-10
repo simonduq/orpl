@@ -1,3 +1,42 @@
+/*
+ * Copyright (c) 2013, Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * This file is part of the Contiki operating system.
+ *
+ */
+
+/**
+ * \file
+ *         ORPL core functions
+ * \author
+ *         Simon Duquennoy <simonduq@sics.se>
+ */
+
 #include "orpl.h"
 #include "orpl-anycast.h"
 #include "orpl-routing-set.h"
@@ -16,8 +55,6 @@
 #endif
 #include "net/uip-debug.h"
 
-/* Insert even non-children neighbors in routing set */
-#define ALL_NEIGHBORS_IN_ROUTING_SET 1
 /* PRR threshold for considering a neighbor as usable */
 #define NEIGHBOR_PRR_THRESHOLD 35
 
@@ -26,7 +63,7 @@
  * - start updating Routing sets only after N+1 seconds
  * - don't age routing sets */
 #ifndef FREEZE_TOPOLOGY
-#define FREEZE_TOPOLOGY 1
+#define FREEZE_TOPOLOGY 0
 #endif
 
 #if FREEZE_TOPOLOGY
@@ -40,7 +77,7 @@
 /* Rank changes of more than RANK_MAX_CHANGE trigger a trickle timer reset */
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)
 /* The last boradcasted EDC */
-static uint16_t last_broadcasted_rank = 0xffff;
+static uint16_t last_broadcasted_edc = 0xffff;
 
 #ifdef UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK
 #define LINK_NEIGHBOR_CALLBACK(addr, status, numtx) UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK(addr, status, numtx)
@@ -48,6 +85,9 @@ void LINK_NEIGHBOR_CALLBACK(const rimeaddr_t *addr, int status, int numtx);
 #else
 #define LINK_NEIGHBOR_CALLBACK(addr, status, numtx)
 #endif /* UIP_CONF_DS6_LINK_NEIGHBOR_CALLBACK */
+
+/* The IPv6 prefix in use */
+uip_ipaddr_t prefix;
 
 /* Set to 1 when only upwards routing is enabled */
 static int orpl_up_only = 0;
@@ -59,9 +99,9 @@ static struct simple_udp_connection routing_set_connection;
 /* Multicast IP address used for routing set broadcasting */
 static uip_ipaddr_t routing_set_addr;
 /* Data structure used for routing set broadcasting. Also includes
- * current rank. */
+ * current edc. */
 struct routing_set_broadcast_s {
-  uint16_t rank;
+  uint16_t edc;
   union {
     routing_set filter;
     uint8_t padding[64];
@@ -97,20 +137,29 @@ static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
 /* Total number of broadcast sent */
 uint32_t orpl_broadcast_count = 0;
 
-static void check_neighbors();
+static void broadcast_routing_set(void *ptr);
 
-/* Returns 1 if the topology is frozen, i.e. we are not allowed to change rank */
-int
-orpl_are_routing_set_active()
+/* Build a global IPv6 address from a link-local IPv6 address */
+static void
+global_ipaddr_from_llipaddr(uip_ipaddr_t *gipaddr, const uip_ipaddr_t *llipaddr)
 {
-  return FREEZE_TOPOLOGY && orpl_up_only == 0 && clock_seconds() > UPDATE_ROUTING_SET_MIN_TIME;
+  uip_ip6addr(gipaddr, 0, 0, 0, 0, 0, 0, 0, 0);
+  memcpy(gipaddr, &prefix, 8);
+  memcpy(gipaddr->u8+8, llipaddr->u8+8, 8);
 }
 
-/* Returns 1 if the topology is frozen, i.e. we are not allowed to change rank */
+/* Returns 1 if EDC is frozen, i.e. we are not allowed to change edc */
 int
 orpl_is_edc_frozen()
 {
   return FREEZE_TOPOLOGY && orpl_up_only == 0 && clock_seconds() > UPDATE_EDC_MAX_TIME;
+}
+
+/* Returns 1 routing sets are active, i.e. we can start inserting and merging */
+int
+orpl_are_routing_set_active()
+{
+  return orpl_up_only == 0 && (FREEZE_TOPOLOGY || clock_seconds() > UPDATE_ROUTING_SET_MIN_TIME);
 }
 
 /* Returns 1 if the node is root of ORPL */
@@ -128,21 +177,29 @@ orpl_current_edc()
   return dag == NULL ? 0xffff : dag->rank;
 }
 
-/* Returns 1 if the number of broadcast acked by a neighbor (count) is high enough
- * to consider a neighbor as usable */
-static int
-test_neighbor_prr(uint16_t count)
-{
-  return orpl_broadcast_count >= 4 && (100*count/orpl_broadcast_count >= NEIGHBOR_PRR_THRESHOLD);
-}
-
 /* Returns 1 if addr is the ip of a reachable neighbor */
 int
-is_reachable_neighbor(uip_ipaddr_t *ipaddr)
+is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
 {
-  uint16_t count = rpl_get_parent_bc_ackcount_default(
-      uip_ds6_nbr_lladdr_from_ipaddr(ipaddr), 0);
-  return count != 0 && test_neighbor_prr(count);
+  /* We don't consider neighbors as reachable before we have send
+   * at least 4 broadcasts to estimate link quality */
+  if(ipaddr != NULL && orpl_broadcast_count >= 4) {
+    uint16_t bc_count = rpl_get_parent_bc_ackcount_default(
+        uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)ipaddr), 0);
+    return 100*bc_count/orpl_broadcast_count >= NEIGHBOR_PRR_THRESHOLD;
+  } else {
+    return 0;
+  }
+}
+
+/* Returns 1 if addr is the ip of a reachable child */
+int
+is_reachable_child(const uip_ipaddr_t *ipaddr)
+{
+  rpl_rank_t curr_edc = orpl_current_edc();
+  rpl_rank_t neighbor_edc = rpl_get_parent_rank(uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)ipaddr));
+  return ipaddr && is_reachable_neighbor(ipaddr) &&
+      neighbor_edc > EDC_W && (neighbor_edc - EDC_W) > curr_edc;
 }
 
 /* Insert a packet sequence number to the blacklist
@@ -198,37 +255,41 @@ acked_down_contains(uint32_t seqno, uint16_t id)
   return 0;
 }
 
+/* Schedule a routing set broadcast in a few seconds */
 static void
-routing_set_do_broadcast(void *ptr)
+request_routing_set_broadcast()
 {
-  if(FREEZE_TOPOLOGY && orpl_up_only && clock_seconds() <= UPDATE_ROUTING_SET_MIN_TIME) {
-    ORPL_LOG("Routing set: requesting broadcast\n");
-    ctimer_set(&routing_set_broadcast_timer, random_rand() % (32 * CLOCK_SECOND), routing_set_do_broadcast, NULL);
+  ORPL_LOG("ORPL: requesting routing set broadcast\n");
+  ctimer_set(&routing_set_broadcast_timer, random_rand() % (16 * CLOCK_SECOND), broadcast_routing_set, NULL);
+}
+
+/* Broadcast our routing set to all neighbors */
+static void
+broadcast_routing_set(void *ptr)
+{
+  if(!orpl_are_routing_set_active()) {
+    request_routing_set_broadcast();
   } else {
     struct routing_set_broadcast_s routing_set_broadcast;
     rpl_rank_t curr_edc = orpl_current_edc();
-    /* Broadcast filter */
-    last_broadcasted_rank = curr_edc;
-    routing_set_broadcast.rank = curr_edc;
+
+    ORPL_LOG("ORPL: broadcast routing set (edc=%u)\n", routing_set_broadcast.edc);
+
+    /* Build data structure to be broadcasted */
+    last_broadcasted_edc = curr_edc;
+    routing_set_broadcast.edc = curr_edc;
     memcpy(routing_set_broadcast.filter, *orpl_routing_set_get_active(), sizeof(routing_set));
 
-    ORPL_LOG("Routing set: do broadcast %u\n", routing_set_broadcast.rank);
+    /* Proceed to UDP transmission */
     sending_routing_set = 1;
     simple_udp_sendto(&routing_set_connection, &routing_set_broadcast, sizeof(struct routing_set_broadcast_s), &routing_set_addr);
     sending_routing_set = 0;
-
   }
 }
 
+/* UDP callback function for received routing sets */
 static void
-routing_set_request_broadcast()
-{
-  ORPL_LOG("Routing set: requesting broadcast\n");
-  ctimer_set(&routing_set_broadcast_timer, random_rand() % (4 * NETSTACK_RDC.channel_check_interval()), routing_set_do_broadcast, NULL);
-}
-
-static void
-routing_set_received(struct simple_udp_connection *c,
+udp_received_routing_set(struct simple_udp_connection *c,
          const uip_ipaddr_t *sender_addr,
          uint16_t sender_port,
          const uip_ipaddr_t *receiver_addr,
@@ -238,75 +299,59 @@ routing_set_received(struct simple_udp_connection *c,
 {
   struct routing_set_broadcast_s *data = (struct routing_set_broadcast_s *)payload;
 
-  uint16_t neighbor_id = node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER));
-  if(neighbor_id == 0) {
-    return;
-  }
-  uint16_t neighbor_rank = data->rank;
-
-  /* EDC: store rank as neighbor attribute, update metric */
-  uint16_t rank_before = rpl_get_parent_rank_default((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), 0xffff);
-  ORPL_LOG("Routing set: received rank from %u %u -> %u (%p)\n", neighbor_id, rank_before, neighbor_rank, data);
-
-  rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_rank);
+  /* EDC: store edc as neighbor attribute, update metric */
+  uint16_t neighbor_edc = data->edc;
+  rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_edc);
   rpl_recalculate_ranks();
 
-  uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), 0xffff);
-  if(count == 0xffff) {
-    return;
-  }
+  if(orpl_are_routing_set_active() && is_reachable_neighbor(sender_addr)) {
+    int bit_count_before = orpl_routing_set_count_bits();
+    int bit_count_after;
+    uip_ipaddr_t sender_global_ipaddr;
+    /* Routing set are active and the neighbor is reachable,
+     * insert the neighbor in our routing set */
+    global_ipaddr_from_llipaddr(&sender_global_ipaddr, sender_addr);
+    orpl_routing_set_insert(&sender_global_ipaddr);
+    ORPL_LOG("ORPL: inserting neighbor into routing set: ");
+    ORPL_LOG_IPADDR(&sender_global_ipaddr);
+    ORPL_LOG("\n");
 
-  if(orpl_are_routing_set_active()) {
-    rpl_rank_t curr_edc = orpl_current_edc();
-    /* Merge Routing sets */
-    if(neighbor_rank != 0xffff && neighbor_rank > EDC_W && (neighbor_rank - EDC_W) > curr_edc && test_neighbor_prr(count)) {
-      uip_ipaddr_t sender_ipaddr;
-      set_ipaddr_from_id(&sender_ipaddr, neighbor_id);
-      int bit_count_before = orpl_routing_set_count_bits();
-      orpl_routing_set_insert(&sender_ipaddr);
-      ORPL_LOG("Routing set: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, orpl_routing_set_count_bits(), "routing set received");
-      orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->filter, neighbor_id);
-      int bit_count_after = orpl_routing_set_count_bits();
-      ORPL_LOG("Routing set: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after);
-      if(curr_instance && bit_count_after != bit_count_before) {
-        ORPL_LOG("Anycast: reset DIO timer (routing set received)\n");
-        //      bit_count_last = bit_count_after;
-        //      rpl_reset_dio_timer(curr_instance);
-        routing_set_request_broadcast();
-      }
+    if(is_reachable_child(sender_addr)) {
+      /* The neighbor is a child, merge its routing set in ours */
+      orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->filter);
+      ORPL_LOG("ORPL: merging routing set from: ");
+      ORPL_LOG_IPADDR(&sender_global_ipaddr);
+      ORPL_LOG("\n");
+    }
+
+    /* Broadcast our routing set again if it has changed */
+    bit_count_after = orpl_routing_set_count_bits();
+    if(curr_instance && bit_count_after != bit_count_before) {
+      ORPL_LOG("ORPL: reset DIO timer (routing set received)\n");
+      request_routing_set_broadcast();
     }
   }
 }
 
-void
-routing_set_add_neighbor(rimeaddr_t *neighbor_addr, const char *message)
+/* Loop over all neighbors and insert the reachable ones into
+   out routing set */
+static void
+insert_reachable_neighbors()
 {
   if(orpl_are_routing_set_active()) {
+    rpl_parent_t *p;
+    for(p = nbr_table_head(rpl_parents);
+        p != NULL;
+        p = nbr_table_next(rpl_parents, p)) {
+      uip_ipaddr_t *nbr_ipaddr = rpl_get_parent_ipaddr(p);
 
-    uip_ipaddr_t neighbor_ipaddr;
-    uint16_t neighbor_id = node_id_from_rimeaddr(neighbor_addr);
-    uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)neighbor_addr, 0xffff);
-    rpl_rank_t curr_edc = orpl_current_edc();
-
-    if(count == 0xffff) {
-      return;
-    }
-
-    uint16_t neighbor_rank = rpl_get_parent_rank_default((uip_lladdr_t *)neighbor_addr, 0xffff);
-
-    ORPL_LOG("Routing set: nbr rank %u\n", neighbor_rank);
-
-    if(neighbor_rank != 0xffff
-#if (ALL_NEIGHBORS_IN_ROUTING_SET==0)
-        && neighbor_rank > (curr_edc + EDC_W)
-#endif
-    ) {
-      set_ipaddr_from_id(&neighbor_ipaddr, neighbor_id);
-      if(test_neighbor_prr(count)) {
-        int bit_count_before = orpl_routing_set_count_bits();
-        orpl_routing_set_insert(&neighbor_ipaddr);
-        int bit_count_after = orpl_routing_set_count_bits();
-        ORPL_LOG("Routing set: inserting %u (%u<%u, %u/%lu, %u->%u) (%s)\n", neighbor_id, curr_edc, neighbor_rank, count, orpl_broadcast_count, bit_count_before, bit_count_after, message);
+      if(is_reachable_child(nbr_ipaddr)) {
+        uip_ipaddr_t nbr_global_ipaddr;
+        global_ipaddr_from_llipaddr(&nbr_global_ipaddr, nbr_ipaddr);
+        orpl_routing_set_insert(&nbr_global_ipaddr);
+        ORPL_LOG("ORPL: inserting neighbor into routing set: ");
+        ORPL_LOG_IPADDR(&nbr_global_ipaddr);
+        ORPL_LOG("\n");
       }
     }
   }
@@ -316,10 +361,10 @@ void
 routing_set_packet_sent(void *ptr, int status, int transmissions)
 {
   if(status == MAC_TX_COLLISION) {
-    routing_set_request_broadcast();
+    request_routing_set_broadcast();
   }
   LINK_NEIGHBOR_CALLBACK(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), status, transmissions);
-  check_neighbors();
+  insert_reachable_neighbors();
 }
 
 void
@@ -329,7 +374,7 @@ orpl_trickle_callback(rpl_instance_t *instance)
   curr_instance = instance;
 
   if(orpl_up_only == 0) {
-    check_neighbors();
+    insert_reachable_neighbors();
 
 #if !FREEZE_TOPOLOGY
     /* Routing set filter ageing */
@@ -337,35 +382,11 @@ orpl_trickle_callback(rpl_instance_t *instance)
     orpl_routing_set_swap();
 #endif
 
-    routing_set_request_broadcast();
-
-    //  int bit_count_current = orpl_routing_set_count_bits();
-    //  if(curr_instance && bit_count_current != bit_count_last) {
-    //    ORPL_LOG("Anycast: reset DIO timer (trickle callback)\n");
-    //    rpl_reset_dio_timer(curr_instance);
-    //    bit_count_last = bit_count_current;
-    //  }
-
+    request_routing_set_broadcast();
   }
 
   /* We recalculate the ranks periodically */
   rpl_recalculate_ranks();
-}
-
-static void
-check_neighbors()
-{
-  if(orpl_up_only == 0) {
-    rpl_parent_t *p;
-    for(p = nbr_table_head(rpl_parents);
-          p != NULL;
-          p = nbr_table_next(rpl_parents, p)) {
-      uint16_t neighbor_id = node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents, p));
-      if(neighbor_id != 0) {
-        routing_set_add_neighbor(nbr_table_get_lladdr(rpl_parents, p), "broadcast done");
-      }
-    }
-  }
 }
 
 void
@@ -399,18 +420,18 @@ orpl_update_edc(rpl_rank_t edc)
     dag->rank = edc;
   }
 
-  /* Reset DIO timer if the rank changed significantly */
-  if(curr_instance && last_broadcasted_rank != 0xffff &&
-      ((last_broadcasted_rank > curr_edc && last_broadcasted_rank - curr_edc > RANK_MAX_CHANGE) ||
-      (curr_edc > last_broadcasted_rank && curr_edc - last_broadcasted_rank > RANK_MAX_CHANGE))) {
-    PRINTF("ORPL: reset DIO timer (rank changed from %u to %u)\n", last_broadcasted_rank, curr_edc);
-    last_broadcasted_rank = curr_edc;
+  /* Reset DIO timer if the edc changed significantly */
+  if(curr_instance && last_broadcasted_edc != 0xffff &&
+      ((last_broadcasted_edc > curr_edc && last_broadcasted_edc - curr_edc > RANK_MAX_CHANGE) ||
+      (curr_edc > last_broadcasted_edc && curr_edc - last_broadcasted_edc > RANK_MAX_CHANGE))) {
+    PRINTF("ORPL: reset DIO timer (edc changed from %u to %u)\n", last_broadcasted_edc, curr_edc);
+    last_broadcasted_edc = curr_edc;
     rpl_reset_dio_timer(curr_instance);
   }
 
   /* Update EDC annotation */
   if(edc != curr_edc) {
-    ANNOTATE("#A rank=%u.%u\n", edc/EDC_DIVISOR,
+    ANNOTATE("#A edc=%u.%u\n", edc/EDC_DIVISOR,
         (10 * (edc % EDC_DIVISOR)) / EDC_DIVISOR);
   }
 
@@ -426,12 +447,16 @@ orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
 
   if(is_root) {
     ANNOTATE("#A color=red\n");
-    ANNOTATE("#A rank=0.0\n");
+    ANNOTATE("#A edc=0.0\n");
     /* Set root EDC to 0 */
     orpl_update_edc(0);
   }
 
-  /* Initializa anycast and routing set modules */
+  /* Initialize prefix */
+  uip_ip6addr(&prefix, 0, 0, 0, 0, 0, 0, 0, 0);
+  memcpy(&prefix, global_ipaddr, 8);
+
+  /* Initialize routing set module */
   orpl_anycast_init(global_ipaddr);
   orpl_routing_set_init();
 
@@ -439,6 +464,6 @@ orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
   uip_create_linklocal_allnodes_mcast(&routing_set_addr);
   simple_udp_register(&routing_set_connection, ROUTING_SET_PORT,
                         NULL, ROUTING_SET_PORT,
-                        routing_set_received);
+                        udp_received_routing_set);
 
 }

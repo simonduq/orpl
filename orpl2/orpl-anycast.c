@@ -59,8 +59,6 @@ rimeaddr_t anycast_addr_down = {.u8 = {0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb,
 rimeaddr_t anycast_addr_nbr = {.u8 = {0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc}};
 rimeaddr_t anycast_addr_recover = {.u8 = {0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd, 0xfd}};
 
-/* The IPv6 prefix in use */
-static uip_ipaddr_t prefix;
 /* Callback functions for 802.15.4 softack driver */
 static void orpl_softack_acked_callback(const uint8_t *buf, uint8_t len);
 static void orpl_softack_input_callback(const uint8_t *buf, uint8_t len, uint8_t **ackbufptr, uint8_t *acklen);
@@ -303,8 +301,6 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
 void
 orpl_anycast_init(const uip_ipaddr_t *global_ipaddr)
 {
-  /* Subscrube to 802.15.4 softack driver */
+  /* Subscribe to 802.15.4 softack driver */
   cc2420_softack_subscribe(orpl_softack_input_callback, orpl_softack_acked_callback);
-  uip_ip6addr(&prefix, 0, 0, 0, 0, 0, 0, 0, 0);
-  memcpy(&prefix, global_ipaddr, 8);
 }
