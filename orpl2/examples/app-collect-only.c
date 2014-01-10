@@ -39,6 +39,7 @@
 #include "contiki-conf.h"
 #include "lib/random.h"
 #include "orpl.h"
+#include "orpl-log.h"
 #include "deployment.h"
 #include "simple-energest.h"
 #include "simple-udp.h"

@@ -43,6 +43,13 @@
 
 #include "uip.h"
 
+#define EXTRA_ACK_LEN    10 /* Number of bytes we add to standard IEEE 802.15.4 ACK frames */
+
+#define DO_ACK            1 /* Set if a link-layer ack must be sent */
+#define IS_ANYCAST        2 /* Set if the packet is a anycast */
+#define FROM_SUBDODAG     4 /* Set if the packet is coming from the sub-dodag (going upwards) */
+#define IS_RECOVERY       8 /* Set if the packet comes from false positive recovery */
+
 /* The different link-layer addresses used for anycast */
 extern rimeaddr_t anycast_addr_up;
 extern rimeaddr_t anycast_addr_down;

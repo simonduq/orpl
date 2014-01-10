@@ -51,6 +51,7 @@
 #include "net/rime/rimestats.h"
 #include "net/netstack.h"
 #include "orpl.h"
+#include "net/mac/frame802154.h"
 #include "node-id.h"
 #include "lib/memb.h"
 

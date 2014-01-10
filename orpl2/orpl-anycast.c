@@ -40,9 +40,12 @@
 
 #include "deployment.h"
 #include "orpl.h"
+#include "orpl-log.h"
+#include "orpl-routing-set.h"
 #include "orpl-anycast.h"
 #include "net/packetbuf.h"
 #include "cc2420-softack.h"
+#include "net/mac/frame802154.h"
 #include <string.h>
 
 enum anycast_direction_e {
@@ -255,7 +258,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
         } else {
           /* We don't route upwards, now check if we are a common ancester of the source
            * and destination. We do this by checking our routing set against the destination. */
-          if(!blacklist_contains(seqno) && orpl_routing_set_contains(&dest_ipv6)) {
+          if(!orpl_blacklist_contains(seqno) && orpl_routing_set_contains(&dest_ipv6)) {
             /* Traffic is going up but we have destination in our routing set.
              * Ack it and start routing downwards (towards the destination) */
             do_ack = DO_ACK;
@@ -264,7 +267,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
       } else if(anycast_direction == direction_down) {
         /* Routing downwards. ACK if we have a worse rank and destination is in subdodag */
         if(curr_edc > EDC_W && curr_edc - EDC_W > current_edc
-            && !blacklist_contains(seqno) && orpl_routing_set_contains(&dest_ipv6)) {
+            && !orpl_blacklist_contains(seqno) && orpl_routing_set_contains(&dest_ipv6)) {
           do_ack = DO_ACK;
         }
       } else if(anycast_direction == direction_recover) {
@@ -274,7 +277,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
          * to avoid duplicates during the recovery process. */
         recovery = IS_RECOVERY;
         /* ORPL TODO: base this on address rather than ID */
-        do_ack = acked_down_contains(seqno, neighbor_id);
+        do_ack = orpl_acked_down_contains(seqno, neighbor_id);
       }
     }
 

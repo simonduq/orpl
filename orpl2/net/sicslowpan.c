@@ -68,6 +68,8 @@
 #include "net/netstack.h"
 #if WITH_ORPL
 #include "orpl.h"
+#include "orpl-log.h"
+#include "orpl-routing-set.h"
 #include "orpl-anycast.h"
 #endif /* WITH_ORPL */
 

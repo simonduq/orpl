@@ -49,6 +49,7 @@
 
 #if WITH_ORPL
 #include "orpl.h"
+#include "orpl-log.h"
 #include "orpl-anycast.h"
 #include "orpl-routing-set.h"
 #endif /* WITH_ORPL */
@@ -640,10 +641,10 @@ tcpip_ipv6_output(void)
       struct app_data *dataptr = appdataptr_from_uip();
       struct app_data data;
       appdata_copy(&data, dataptr);
-      if(is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
+      if(orpl_is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
         ORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;
-      } else if(orpl_routing_set_contains(&UIP_IP_BUF->destipaddr) && !blacklist_contains(data.seqno)) {
+      } else if(orpl_routing_set_contains(&UIP_IP_BUF->destipaddr) && !orpl_blacklist_contains(data.seqno)) {
         ORPL_LOG_FROM_UIP("Tcpip: fw down");
         anycast_addr = &anycast_addr_down;
       } else if(orpl_is_root() == 0){

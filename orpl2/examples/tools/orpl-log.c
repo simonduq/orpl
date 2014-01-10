@@ -43,6 +43,9 @@
 #include "orpl-log.h"
 #include <string.h>
 
+extern int forwarder_set_size;
+extern int neighbor_set_size;
+
 /* Copy an appdata to another with no assumption that the addresses are aligned */
 void
 appdata_copy(struct app_data *dst, struct app_data *src)

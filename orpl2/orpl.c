@@ -38,6 +38,7 @@
  */
 
 #include "orpl.h"
+#include "orpl-log.h"
 #include "orpl-anycast.h"
 #include "orpl-routing-set.h"
 #include "net/packetbuf.h"
@@ -54,8 +55,16 @@
 #endif
 #include "net/uip-debug.h"
 
-/* PRR threshold for considering a neighbor as usable */
-#define NEIGHBOR_PRR_THRESHOLD 35
+/* The IPv6 prefix in use */
+uip_ipaddr_t prefix;
+
+/* Flag used to tell lower layers that the current UDP transmission
+ * is a routing set, so that the desired callback function is called
+ * after each transmission attempt */
+int sending_routing_set = 0;
+
+/* Total number of broadcast sent */
+uint32_t orpl_broadcast_count = 0;
 
 /* When set:
  * - stop updating EDC after N seconds
@@ -73,13 +82,13 @@
 #define UPDATE_ROUTING_SET_MIN_TIME 0
 #endif
 
+/* PRR threshold for considering a neighbor as usable */
+#define NEIGHBOR_PRR_THRESHOLD 35
+
 /* Rank changes of more than RANK_MAX_CHANGE trigger a trickle timer reset */
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)
 /* The last boradcasted EDC */
 static uint16_t last_broadcasted_edc = 0xffff;
-
-/* The IPv6 prefix in use */
-uip_ipaddr_t prefix;
 
 /* Set to 1 when only upwards routing is enabled */
 static int orpl_up_only = 0;
@@ -99,10 +108,7 @@ struct routing_set_broadcast_s {
     uint8_t padding[64];
   };
 };
-/* Flag used to tell bottom layers that the current UDP transmission
- * is a routing set, so that the desired callback function is called
- * after each transmission attempt */
-int sending_routing_set = 0;
+
 /* Timer for periodic broadcast of routing sets */
 static struct ctimer routing_set_broadcast_timer;
 
@@ -125,9 +131,6 @@ static rpl_instance_t *curr_instance;
 /* Routing set filter false positive blacklist */
 #define BLACKLIST_SIZE 16
 static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
-
-/* Total number of broadcast sent */
-uint32_t orpl_broadcast_count = 0;
 
 static void broadcast_routing_set(void *ptr);
 
@@ -171,7 +174,7 @@ orpl_current_edc()
 
 /* Returns 1 if addr is the ip of a reachable neighbor */
 int
-is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
+orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
 {
   /* We don't consider neighbors as reachable before we have send
    * at least 4 broadcasts to estimate link quality */
@@ -186,11 +189,11 @@ is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
 
 /* Returns 1 if addr is the ip of a reachable child */
 int
-is_reachable_child(const uip_ipaddr_t *ipaddr)
+orpl_is_reachable_child(const uip_ipaddr_t *ipaddr)
 {
   rpl_rank_t curr_edc = orpl_current_edc();
   rpl_rank_t neighbor_edc = rpl_get_parent_rank(uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)ipaddr));
-  return ipaddr && is_reachable_neighbor(ipaddr) &&
+  return ipaddr && orpl_is_reachable_neighbor(ipaddr) &&
       neighbor_edc > EDC_W && (neighbor_edc - EDC_W) > curr_edc;
 }
 
@@ -209,7 +212,7 @@ orpl_blacklist_insert(uint32_t seqno)
 
 /* Returns 1 is the sequence number is contained in the blacklist */
 int
-blacklist_contains(uint32_t seqno)
+orpl_blacklist_contains(uint32_t seqno)
 {
   int i;
   for(i = 0; i < BLACKLIST_SIZE; ++i) {
@@ -223,7 +226,7 @@ blacklist_contains(uint32_t seqno)
 /* A packet was routed downwards successfully, insert it into our
  * history. Used during false positive recovery. */
 void
-acked_down_insert(uint32_t seqno, uint16_t id)
+orpl_acked_down_insert(uint32_t seqno, uint16_t id)
 {
   ORPL_LOG("ORPL: inserted ack down %lx %u\n", seqno, id);
   int i;
@@ -236,7 +239,7 @@ acked_down_insert(uint32_t seqno, uint16_t id)
 
 /* Returns 1 if a given packet is in the acked down history */
 int
-acked_down_contains(uint32_t seqno, uint16_t id)
+orpl_acked_down_contains(uint32_t seqno, uint16_t id)
 {
   int i;
   for(i = 0; i < ACKED_DOWN_SIZE; ++i) {
@@ -305,7 +308,7 @@ udp_received_routing_set(struct simple_udp_connection *c,
   rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_edc);
   rpl_recalculate_ranks();
 
-  if(orpl_are_routing_set_active() && is_reachable_neighbor(sender_addr)) {
+  if(orpl_are_routing_set_active() && orpl_is_reachable_neighbor(sender_addr)) {
     int bit_count_before = orpl_routing_set_count_bits();
     int bit_count_after;
     uip_ipaddr_t sender_global_ipaddr;
@@ -317,7 +320,7 @@ udp_received_routing_set(struct simple_udp_connection *c,
     ORPL_LOG_IPADDR(&sender_global_ipaddr);
     ORPL_LOG("\n");
 
-    if(is_reachable_child(sender_addr)) {
+    if(orpl_is_reachable_child(sender_addr)) {
       /* The neighbor is a child, merge its routing set in ours */
       orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->filter);
       ORPL_LOG("ORPL: merging routing set from: ");
@@ -382,7 +385,7 @@ orpl_broadcast_done()
         p = nbr_table_next(rpl_parents, p)) {
       uip_ipaddr_t *nbr_ipaddr = rpl_get_parent_ipaddr(p);
 
-      if(is_reachable_child(nbr_ipaddr)) {
+      if(orpl_is_reachable_child(nbr_ipaddr)) {
         uip_ipaddr_t nbr_global_ipaddr;
         global_ipaddr_from_llipaddr(&nbr_global_ipaddr, nbr_ipaddr);
         orpl_routing_set_insert(&nbr_global_ipaddr);
