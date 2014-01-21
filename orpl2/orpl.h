@@ -47,8 +47,8 @@
 /* From rtimer ticks to EDC fixed point metric */
 #define EDC_TICKS_TO_METRIC(edc) (uint16_t)((edc) / (CONTIKIMAC_CONF_CYCLE_TIME / EDC_DIVISOR))
 
-/* The IPv6 prefix in use */
-extern uip_ipaddr_t prefix;
+/* The global IPv6 address in use */
+extern uip_ipaddr_t global_ipv6;
 
 /* Flag used to tell lower layers that the current UDP transmission
  * is a routing set, so that the desired callback function is called
@@ -93,6 +93,6 @@ void orpl_broadcast_done();
 /* Update the current EDC (rank of the node) */
 void orpl_update_edc(rpl_rank_t edc);
 /* ORPL initialization */
-void orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only);
+void orpl_init(const uip_ipaddr_t *ipaddr, int is_root, int up_only);
 
 #endif /* __ORPL_H__ */

@@ -61,6 +61,6 @@ void orpl_anycast_set_packetbuf_addr();
 /* Parse a modified 802.15.4 frame */
 uint8_t orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc);
 /* Anycast-specific inits */
-void orpl_anycast_init(const uip_ipaddr_t *global_ipaddr);
+void orpl_anycast_init();
 
 #endif /* __ORPL_ANYCAST_H__ */

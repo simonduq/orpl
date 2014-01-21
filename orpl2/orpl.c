@@ -55,8 +55,8 @@
 #endif
 #include "net/uip-debug.h"
 
-/* The IPv6 prefix in use */
-uip_ipaddr_t prefix;
+/* The global IPv6 address in use */
+uip_ipaddr_t global_ipv6;
 
 /* Flag used to tell lower layers that the current UDP transmission
  * is a routing set, so that the desired callback function is called
@@ -139,7 +139,7 @@ static void
 global_ipaddr_from_llipaddr(uip_ipaddr_t *gipaddr, const uip_ipaddr_t *llipaddr)
 {
   uip_ip6addr(gipaddr, 0, 0, 0, 0, 0, 0, 0, 0);
-  memcpy(gipaddr, &prefix, 8);
+  memcpy(gipaddr, &global_ipv6, 8);
   memcpy(gipaddr->u8+8, llipaddr->u8+8, 8);
 }
 
@@ -429,7 +429,7 @@ orpl_update_edc(rpl_rank_t edc)
 
 /* ORPL initialization */
 void
-orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
+orpl_init(const uip_ipaddr_t *ipaddr, int is_root, int up_only)
 {
   orpl_up_only = up_only;
 
@@ -440,12 +440,11 @@ orpl_init(const uip_ipaddr_t *global_ipaddr, int is_root, int up_only)
     orpl_update_edc(0);
   }
 
-  /* Initialize prefix */
-  uip_ip6addr(&prefix, 0, 0, 0, 0, 0, 0, 0, 0);
-  memcpy(&prefix, global_ipaddr, 8);
+  /* Initialize global address */
+  memcpy(&global_ipv6, ipaddr, 16);
 
   /* Initialize routing set module */
-  orpl_anycast_init(global_ipaddr);
+  orpl_anycast_init();
   orpl_routing_set_init();
 
   /* Set up multicast UDP connectoin for dissemination of routing sets */
