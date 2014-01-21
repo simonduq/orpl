@@ -224,10 +224,8 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
     /* Convert from 802.15.4 little endian to Contiki's big-endian addresses */
     for(i=0; i<8; i++) {
       src_addr_host_order[i] = src_addr[7-i];
-      src_addr_host_order[i] = dest_addr[7-i];
+      dest_addr_host_order[i] = dest_addr[7-i];
     }
-    /* TODO ORPL: should use address instead of id */
-    uint16_t neighbor_id = node_id_from_rimeaddr((rimeaddr_t*)src_addr_host_order);
 
     /* Parse the destination address */
     if(anycast_parse_addr((rimeaddr_t*)dest_addr, &anycast_direction, &current_edc, &seqno)) {
@@ -280,8 +278,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
          * take the packet back during a recovery, before sending down again. This is
          * to avoid duplicates during the recovery process. */
         recovery = IS_RECOVERY;
-        /* ORPL TODO: base this on address rather than ID */
-        do_ack = orpl_acked_down_contains(seqno, neighbor_id);
+        do_ack = orpl_acked_down_contains(seqno, (const rimeaddr_t *)src_addr_host_order);
       }
     }
 

@@ -118,7 +118,7 @@ static struct ctimer routing_set_broadcast_timer;
  * it back (avoids duplicates during in-depth exploration) */
 struct packet_acked_down_s {
   uint32_t seqno;
-  uint16_t id;
+  rimeaddr_t child;
 };
 /* Size of the packet acked down history */
 #define ACKED_DOWN_SIZE 32
@@ -238,24 +238,24 @@ orpl_blacklist_contains(uint32_t seqno)
 /* A packet was routed downwards successfully, insert it into our
  * history. Used during false positive recovery. */
 void
-orpl_acked_down_insert(uint32_t seqno, uint16_t id)
+orpl_acked_down_insert(uint32_t seqno, const rimeaddr_t *child)
 {
-  ORPL_LOG("ORPL: inserted ack down %lx %u\n", seqno, id);
+  ORPL_LOG("ORPL: inserted ack down %lx\n", seqno);
   int i;
   for(i = ACKED_DOWN_SIZE - 1; i > 0; --i) {
     acked_down[i] = acked_down[i - 1];
   }
   acked_down[0].seqno = seqno;
-  acked_down[0].id = id;
+  rimeaddr_copy(&acked_down[0].child, child);
 }
 
 /* Returns 1 if a given packet is in the acked down history */
 int
-orpl_acked_down_contains(uint32_t seqno, uint16_t id)
+orpl_acked_down_contains(uint32_t seqno, const rimeaddr_t *child)
 {
   int i;
   for(i = 0; i < ACKED_DOWN_SIZE; ++i) {
-    if(seqno == acked_down[i].seqno && id == acked_down[i].id) {
+    if(seqno == acked_down[i].seqno && rimeaddr_cmp(child, &acked_down[i].child)) {
       return 1;
     }
   }

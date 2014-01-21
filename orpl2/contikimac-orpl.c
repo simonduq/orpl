@@ -927,7 +927,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
 		  if(dataptr && !packetbuf_attr(PACKETBUF_ATTR_GOING_UP)) {
 			  struct app_data data;
 			  appdata_copy(&data, dataptr);
-			  orpl_acked_down_insert(data.seqno, node_id_from_rimeaddr(dest));
+			  orpl_acked_down_insert(data.seqno, dest);
 		  }
 	  } else {
 		  ORPL_LOG_FROM_PACKETBUF("Cmac:! noack s %u c %d seq %u", strobe_duration, collisions, seqno);

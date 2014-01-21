@@ -77,9 +77,9 @@ void orpl_blacklist_insert(uint32_t seqno);
 int orpl_blacklist_contains(uint32_t seqno);
 /* A packet was routed downwards successfully, insert it into our
  * history. Used during false positive recovery. */
-void orpl_acked_down_insert(uint32_t seqno, uint16_t id);
+void orpl_acked_down_insert(uint32_t seqno, const rimeaddr_t *child);
 /* Returns 1 if a given packet is in the acked down history */
-int orpl_acked_down_contains(uint32_t seqno, uint16_t id);
+int orpl_acked_down_contains(uint32_t seqno, const rimeaddr_t *child);
 /* Callback function called after routing set transmissions */
 void orpl_routing_set_sent(void *ptr, int status, int transmissions);
 /* Function called when the trickle timer expires */
