@@ -104,7 +104,7 @@ static uip_ipaddr_t routing_set_addr;
 struct routing_set_broadcast_s {
   uint16_t edc;
   union {
-    routing_set filter;
+    routing_set rs;
     uint8_t padding[64];
   };
 };
@@ -128,7 +128,7 @@ static struct packet_acked_down_s acked_down[ACKED_DOWN_SIZE];
 /* The current RPL instance */
 static rpl_instance_t *curr_instance;
 
-/* Routing set filter false positive blacklist */
+/* Routing set false positive blacklist */
 #define BLACKLIST_SIZE 16
 static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
 
@@ -273,7 +273,7 @@ broadcast_routing_set(void *ptr)
     /* Build data structure to be broadcasted */
     last_broadcasted_edc = curr_edc;
     routing_set_broadcast.edc = curr_edc;
-    memcpy(routing_set_broadcast.filter, *orpl_routing_set_get_active(), sizeof(routing_set));
+    memcpy(routing_set_broadcast.rs, *orpl_routing_set_get_active(), sizeof(routing_set));
 
     /* Proceed to UDP transmission */
     sending_routing_set = 1;
@@ -322,7 +322,7 @@ udp_received_routing_set(struct simple_udp_connection *c,
 
     if(orpl_is_reachable_child(sender_addr)) {
       /* The neighbor is a child, merge its routing set in ours */
-      orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->filter);
+      orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->rs);
       ORPL_LOG("ORPL: merging routing set from: ");
       ORPL_LOG_IPADDR(&sender_global_ipaddr);
       ORPL_LOG("\n");

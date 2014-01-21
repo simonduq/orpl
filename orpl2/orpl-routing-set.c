@@ -140,7 +140,7 @@ orpl_routing_set_merge(routing_set rs)
   }
 }
 
-/* Checks if our global double bloom filter contains an given IPv6 */
+/* Checks if our global double routing set contains an given IPv6 */
 int
 orpl_routing_set_contains(const uip_ipaddr_t *ipv6)
 {
@@ -166,7 +166,7 @@ orpl_routing_set_swap()
 {
   /* Swap active flag */
   active_index = 1 - active_index;
-  /* Reset the newly inactive filter */
+  /* Reset the newly inactive routing set */
   memset(routing_sets[1 - active_index], 0, sizeof(routing_set));
 }
 
