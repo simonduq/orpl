@@ -71,7 +71,7 @@ uint32_t orpl_broadcast_count = 0;
  * - start updating Routing sets only after N+1 seconds
  * - don't age routing sets */
 #ifndef FREEZE_TOPOLOGY
-#define FREEZE_TOPOLOGY 0
+#define FREEZE_TOPOLOGY 1
 #endif
 
 #if FREEZE_TOPOLOGY
