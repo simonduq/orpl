@@ -143,6 +143,14 @@ global_ipaddr_from_llipaddr(uip_ipaddr_t *gipaddr, const uip_ipaddr_t *llipaddr)
   memcpy(gipaddr->u8+8, llipaddr->u8+8, 8);
 }
 
+/* Build a local IPv6 address from a link-local IPv6 address */
+static void
+llipaddr_from_global_ipaddr(uip_ipaddr_t *llipaddr, const uip_ipaddr_t *gipaddr)
+{
+  uip_ip6addr(llipaddr, 0xfe80, 0, 0, 0, 0, 0, 0, 0);
+  memcpy(llipaddr->u8+8, gipaddr->u8+8, 8);
+}
+
 /* Returns 1 if EDC is frozen, i.e. we are not allowed to change edc */
 int
 orpl_is_edc_frozen()
@@ -172,27 +180,31 @@ orpl_current_edc()
   return dag == NULL ? 0xffff : dag->rank;
 }
 
-/* Returns 1 if addr is the ip of a reachable neighbor */
+/* Returns 1 if addr is the global ip of a reachable neighbor */
 int
 orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
 {
+  uip_ipaddr_t llipaddr;
+  llipaddr_from_global_ipaddr(&llipaddr, ipaddr);
   /* We don't consider neighbors as reachable before we have send
    * at least 4 broadcasts to estimate link quality */
   if(ipaddr != NULL && orpl_broadcast_count >= 4) {
     uint16_t bc_count = rpl_get_parent_bc_ackcount_default(
-        uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)ipaddr), 0);
+        uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)&llipaddr), 0);
     return 100*bc_count/orpl_broadcast_count >= NEIGHBOR_PRR_THRESHOLD;
   } else {
     return 0;
   }
 }
 
-/* Returns 1 if addr is the ip of a reachable child */
+/* Returns 1 if addr is the global ip of a reachable child */
 int
 orpl_is_reachable_child(const uip_ipaddr_t *ipaddr)
 {
   rpl_rank_t curr_edc = orpl_current_edc();
-  rpl_rank_t neighbor_edc = rpl_get_parent_rank(uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)ipaddr));
+  uip_ipaddr_t llipaddr;
+  llipaddr_from_global_ipaddr(&llipaddr, ipaddr);
+  rpl_rank_t neighbor_edc = rpl_get_parent_rank(uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)&llipaddr));
   return ipaddr && orpl_is_reachable_neighbor(ipaddr) &&
       neighbor_edc > EDC_W && (neighbor_edc - EDC_W) > curr_edc;
 }
@@ -308,19 +320,22 @@ udp_received_routing_set(struct simple_udp_connection *c,
   rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_edc);
   rpl_recalculate_ranks();
 
-  if(orpl_are_routing_set_active() && orpl_is_reachable_neighbor(sender_addr)) {
+  /* Calculate neighbor's global IP address */
+  uip_ipaddr_t sender_global_ipaddr;
+  global_ipaddr_from_llipaddr(&sender_global_ipaddr, sender_addr);
+
+  if(orpl_are_routing_set_active() && orpl_is_reachable_neighbor(&sender_global_ipaddr)) {
     int bit_count_before = orpl_routing_set_count_bits();
     int bit_count_after;
-    uip_ipaddr_t sender_global_ipaddr;
+
     /* Routing set are active and the neighbor is reachable,
      * insert the neighbor in our routing set */
-    global_ipaddr_from_llipaddr(&sender_global_ipaddr, sender_addr);
     orpl_routing_set_insert(&sender_global_ipaddr);
     ORPL_LOG("ORPL: inserting neighbor into routing set: ");
     ORPL_LOG_IPADDR(&sender_global_ipaddr);
     ORPL_LOG("\n");
 
-    if(orpl_is_reachable_child(sender_addr)) {
+    if(orpl_is_reachable_child(&sender_global_ipaddr)) {
       /* The neighbor is a child, merge its routing set in ours */
       orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->rs);
       ORPL_LOG("ORPL: merging routing set from: ");
@@ -384,10 +399,10 @@ orpl_broadcast_done()
         p != NULL;
         p = nbr_table_next(rpl_parents, p)) {
       uip_ipaddr_t *nbr_ipaddr = rpl_get_parent_ipaddr(p);
+      uip_ipaddr_t nbr_global_ipaddr;
+      global_ipaddr_from_llipaddr(&nbr_global_ipaddr, nbr_ipaddr);
 
-      if(orpl_is_reachable_child(nbr_ipaddr)) {
-        uip_ipaddr_t nbr_global_ipaddr;
-        global_ipaddr_from_llipaddr(&nbr_global_ipaddr, nbr_ipaddr);
+      if(orpl_is_reachable_child(&nbr_global_ipaddr)) {
         orpl_routing_set_insert(&nbr_global_ipaddr);
         ORPL_LOG("ORPL: inserting neighbor into routing set: ");
         ORPL_LOG_IPADDR(&nbr_global_ipaddr);
