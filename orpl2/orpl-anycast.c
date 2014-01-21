@@ -265,11 +265,15 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
           }
         }
       } else if(anycast_direction == direction_down) {
-        /* Routing downwards. ACK if we have a worse rank and destination is in subdodag */
-        if(curr_edc > EDC_W && curr_edc - EDC_W > current_edc
-            && !orpl_blacklist_contains(seqno) && orpl_routing_set_contains(&dest_ipv6)) {
+        /* Routing downwards. ACK if destination is reachable neighbor or
+         * we it is in subdodag and we have a worse rank */
+        if(!orpl_blacklist_contains(seqno)
+            && (orpl_is_reachable_neighbor(&dest_ipv6)
+                || (curr_edc > EDC_W && curr_edc - EDC_W > current_edc
+                && orpl_routing_set_contains(&dest_ipv6)))) {
           do_ack = DO_ACK;
         }
+
       } else if(anycast_direction == direction_recover) {
         /* This packet is sent back from a child that experiences false positive. Only
          * the nodes that did forward this same packet downwards before are allowed to
