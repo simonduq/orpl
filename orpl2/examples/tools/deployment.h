@@ -57,7 +57,7 @@
 #if IN_TWIST
 #define ROOT_ID 137
 #elif IN_INDRIYA
-#define ROOT_ID 20
+#define ROOT_ID 1
 #else
 #define ROOT_ID 1
 #endif
