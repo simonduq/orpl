@@ -57,6 +57,32 @@
 
 #include <string.h>
 
+
+#if WITH_ORPL_LB
+//#include "project-conf.h"
+#define LB_DELTA 5
+#define LB_INIT 5
+#define LB_LIMIT 2
+#define LB_DATAPERIOD 1*60*CLOCK_SECOND // period between two checks (used with ctimer)
+#define LB_GUARD_TIME 10*60 //guard timer before starting load balancing (used with stimer)
+#define CYCLE_MAX  (2000 * RTIMER_ARCH_SECOND/1000)
+#define CYCLE_MIN (50 * RTIMER_ARCH_SECOND/1000) // min bound
+#define DUTY_CYCLE_TARGET 0.90 //
+#define DC_ALPHA 0.25
+#define MODE 0
+#ifdef CONTIKIMAC_CONF_CYCLE_TIME
+uint32_t cycle_time=CONTIKIMAC_CONF_CYCLE_TIME;
+#else
+uint32_t cycle_time=RTIMER_ARCH_SECOND / NETSTACK_RDC_CHANNEL_CHECK_RATE
+#endif
+
+static struct ctimer ct;//timer used to manage the cycle
+static struct stimer guard; //timer used for the guard_time
+static uint32_t last_tx, last_rx, last_time;
+static uint32_t start_tx, start_rx, start_time;
+static uint16_t periodic_dc, objective_dc, total_dc, weighted_dc;
+#endif /*WITH_ORPL_LB*/
+
 /* TX/RX cycles are synchronized with neighbor wake periods */
 #ifdef CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION
 #define WITH_PHASE_OPTIMIZATION      CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION
@@ -103,10 +129,19 @@ struct hdr {
 
 /* CYCLE_TIME for channel cca checks, in rtimer ticks. */
 #ifdef CONTIKIMAC_CONF_CYCLE_TIME
-#define CYCLE_TIME (CONTIKIMAC_CONF_CYCLE_TIME)
+#if WITH_ORPL_LB
+#define CYCLE_TIME ( cycle_time )
+#else
+#define CYCLE_TIME (CONTIKIMAC_CONF_CYCLE_TIME)  //=(CMD_CYCLE_TIME * RTIMER_ARCH_SECOND / 1000)
+#endif /*WITH_ORPL_LB*/
+#else /*CONTIKIMAC_CONF_CYCLE_TIME*/
+#if WITH_ORPL_LB
+#define CYCLE_TIME ( cycle_time )
 #else
 #define CYCLE_TIME (RTIMER_ARCH_SECOND / NETSTACK_RDC_CHANNEL_CHECK_RATE)
-#endif
+#endif /*WITH_ORPL_LB*/
+#endif /*CONTIKIMAC_CONF_CYCLE_TIME*/
+uint32_t cycle_max;//use to manage strobe_time
 
 /* CHANNEL_CHECK_RATE is enforced to be a power of two.
  * If RTIMER_ARCH_SECOND is not also a power of two, there will be an inexact
@@ -192,8 +227,11 @@ static int we_are_receiving_burst = 0;
 
 /* STROBE_TIME is the maximum amount of time a transmitted packet
    should be repeatedly transmitted as part of a transmission. */
+#if WITH_ORPL_LB
+#define STROBE_TIME                        (cycle_max + 2 * CHECK_TIME)
+#else
 #define STROBE_TIME                        (CYCLE_TIME + 2 * CHECK_TIME)
-
+#endif /*WITH_ORPL_LB*/
 /* GUARD_TIME is the time before the expected phase of a neighbor that
    a transmitted should begin transmitting packets. */
 #define GUARD_TIME                         10 * CHECK_TIME + CHECK_TIME_TX
@@ -245,13 +283,12 @@ volatile uint8_t contikimac_keep_radio_on = 0;
 volatile unsigned char we_are_sending = 0;
 static volatile unsigned char radio_is_on = 0;
 
-#define DEBUG 0
+#define DEBUG DEBUG_NONE
+#include "net/uip-debug.h"
 #if DEBUG
 #include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
 #define PRINTDEBUG(...) printf(__VA_ARGS__)
 #else
-#define PRINTF(...)
 #define PRINTDEBUG(...)
 #endif
 
@@ -420,7 +457,6 @@ powercycle(struct rtimer *t, void *ptr)
 #endif
 
     packet_seen = 0;
-
     for(count = 0; count < CCA_COUNT_MAX; ++count) {
       t0 = RTIMER_NOW();
       if(we_are_sending == 0 && we_are_receiving_burst == 0) {
@@ -528,6 +564,91 @@ powercycle(struct rtimer *t, void *ptr)
 
   PT_END(&pt);
 }
+
+/*---------------------------------------------------------------------------*/
+#if WITH_ORPL_LB
+static void
+managecycle(void *ptr)
+{
+  static uint16_t cpt;
+  energest_flush();
+  uint32_t curr_tx = energest_type_time(ENERGEST_TYPE_TRANSMIT);
+  uint32_t curr_rx = energest_type_time(ENERGEST_TYPE_LISTEN);
+  uint32_t curr_time = energest_type_time(ENERGEST_TYPE_CPU) + energest_type_time(ENERGEST_TYPE_LPM);
+
+  //total_dc = (10ul* (curr_tx + curr_rx))/(curr_time/1000ul);
+  total_dc = (10ul* ((curr_tx - start_tx) + (curr_rx-start_rx)))/((curr_time-start_time)/1000ul);
+
+  uint32_t temp1 = curr_tx - last_tx; //delta_tx
+  uint32_t temp2 = curr_rx - last_rx; //delta_rx
+  uint32_t temp3 = curr_time - last_time; //delta_time
+
+  last_tx = curr_tx;
+  last_rx = curr_rx;
+  last_time = curr_time;
+
+  //periodic_dc = (100ull* 100ull * (delta_tx+delta_rx))/delta_time;// 100 * to have at least 2 decimales
+  periodic_dc = (uint16_t)((10ul * (temp1+temp2))/(temp3/1000ul));
+  objective_dc = (uint16_t)(DUTY_CYCLE_TARGET*100ul);
+  weighted_dc= (uint16_t)((DC_ALPHA*100ul*periodic_dc + (1*100ul-DC_ALPHA*100ul)*total_dc)/100ul);
+  //weighted_dc= ((uint32_t)(DC_ALPHA*100ul)*periodic_dc + ((uint32_t)(1*100ul-DC_ALPHA*100ul)*last_dc))/100ul;
+
+  /*temp1=periodic_dc/100ul;
+  temp2=(periodic_dc%100ul)/10ul;
+  temp3=periodic_dc%10ul;
+  printf("ORPL_LB: dutycycle : %lu.%lu%lu",temp1,temp2,temp3);
+  temp1=total_dc/100ul;
+  temp2=(total_dc%100ul)/10ul;
+  temp3=(total_dc%10ul);
+  printf(" - %lu.%lu%lu",temp1,temp2,temp3);
+  temp1=weighted_dc/100ul;
+  temp2=(weighted_dc%100ul)/10ul;
+  temp3=(weighted_dc%10ul);
+  printf(" - %lu.%lu%lu",temp1,temp2,temp3);*/
+
+  if(stimer_expired(&guard))
+  {
+    cycle_max=CYCLE_MAX;//before it was CYCLE_TIME
+    if(weighted_dc > objective_dc || weighted_dc < objective_dc)//2=2%=0.02*100
+    {
+      uint16_t weight = (uint16_t)(weighted_dc*100/objective_dc);
+      //printf("- w=%lu.%lu%lu",weight/100ul, (weight%100ul)/10ul, weight%10ul);
+      //printf ("- %lu->",(unsigned long)(CYCLE_TIME* 1000/RTIMER_ARCH_SECOND));
+      uint32_t temp_cycle = (cycle_time/100ul)*weight;
+      if(temp_cycle > CYCLE_MAX)
+      {
+        cycle_time=CYCLE_MAX;
+      }
+      else if(temp_cycle < CYCLE_MIN)
+      {
+        cycle_time=CYCLE_MIN;
+      }
+      else
+      {
+        cycle_time=temp_cycle;
+      }
+    }
+  }
+  else
+  {
+    //use to not consider the time needed to stabilize the network to compute DC
+    start_tx=curr_tx;
+    start_rx=curr_rx;
+    start_time=curr_time;
+  }
+  ORPL_LOG_NULL("ORPL_LB: [%u %u] %8lu +%8lu /%8lu (%lu)\n",
+      node_id,
+      cpt++,
+      temp1, temp2, temp3,
+      (unsigned long)(CYCLE_TIME* 1000/RTIMER_ARCH_SECOND)
+  );
+  //ORPL_LOG("ORPL_LB2: %u %u %u\n",periodic_dc,total_dc,weighted_dc);
+
+  ANNOTATE("#A int=%lu\n",(unsigned long)(CYCLE_TIME* 1000/RTIMER_ARCH_SECOND));
+  ctimer_reset(&ct);
+
+}
+#endif /*WITH_ORPL_LB*/
 /*---------------------------------------------------------------------------*/
 static int
 broadcast_rate_drop(void)
@@ -1088,6 +1209,7 @@ input_packet(void)
 
       struct app_data *dataptr = NULL;
       if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
+
         //TODO ORPL: don't use dataptr (r seqno, rw hop)
         dataptr = appdataptr_from_packetbuf();
       }
@@ -1153,7 +1275,7 @@ input_packet(void)
                * are not dropped as app-layer duplicates */
               if(seqno == received_app_seqnos[i].seqno) {
                 /* Drop the packet. */
-            	ORPL_LOG_FROM_PACKETBUF("Cmac:! dropping app-layer duplicate from %d", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
+            	 ORPL_LOG_FROM_PACKETBUF("Cmac:! dropping app-layer duplicate from %d", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
                 return;
               }
             }
@@ -1185,14 +1307,25 @@ init(void)
   radio_is_on = 0;
   PT_INIT(&pt);
 
+#if WITH_ORPL_LB
+  cycle_max=CYCLE_TIME;
+#endif
   rtimer_set(&rt, RTIMER_NOW() + (random_rand() % CYCLE_TIME), 1,
              (void (*)(struct rtimer *, void *))powercycle, NULL);
 
   contikimac_is_on = 1;
 
+
+
+#if WITH_ORPL_LB
+  ctimer_set(&ct, LB_DATAPERIOD,
+             (void (*)(void *))managecycle, NULL);
+  stimer_set(&guard, LB_GUARD_TIME);
+#endif /* WITH_ORPL_LB*/
+
 #if WITH_PHASE_OPTIMIZATION
   phase_init();
-#endif /* WITH_PHASE_OPTIMIZATION */
+#endif /*WITH_PHASE_OPTIMIZATION*/
 
 }
 /*---------------------------------------------------------------------------*/
