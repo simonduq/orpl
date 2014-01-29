@@ -45,7 +45,7 @@
 #include "simple-udp.h"
 #include "cc2420.h"
 
-#define SEND_INTERVAL   (60 * CLOCK_SECOND)
+#define SEND_INTERVAL   (4 * 60 * CLOCK_SECOND)
 #define UDP_PORT 1234
 
 static char buf[APP_PAYLOAD_LEN];
@@ -118,6 +118,9 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
   if(node_id == ROOT_ID) {
     NETSTACK_RDC.off(1);
   } else {
+    etimer_set(&periodic_timer, 2 * 60 * CLOCK_SECOND);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
+    etimer_set(&periodic_timer, SEND_INTERVAL);
     while(1) {
       etimer_set(&send_timer, random_rand() % (SEND_INTERVAL));
       PROCESS_WAIT_UNTIL(etimer_expired(&send_timer));
