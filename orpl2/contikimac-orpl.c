@@ -1022,13 +1022,12 @@ input_packet(void)
 
   if(packetbuf_datalen() > 0) {
     uint16_t neighbor_edc;
-    int ret = orpl_anycast_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc);
+    int ret = orpl_anycast_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc, 1);
 
     if(ret & IS_ANYCAST) {
       packetbuf_set_attr(PACKETBUF_ATTR_IS_ANYCAST, (ret & IS_ANYCAST) != 0);
       packetbuf_set_attr(PACKETBUF_ATTR_IS_RECOVERY, (ret & IS_RECOVERY) != 0);
       packetbuf_set_attr(PACKETBUF_ATTR_EDC, neighbor_edc);
-      packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
     } else {
       packetbuf_set_attr(PACKETBUF_ATTR_EDC, 0xffff);
     }

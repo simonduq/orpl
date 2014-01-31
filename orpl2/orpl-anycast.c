@@ -164,7 +164,7 @@ orpl_softack_input_callback(const uint8_t *frame, uint8_t framelen, uint8_t **ac
 
 	if(is_data) {
 		if(ack_required) { /* This is unicast or unicast, parse it */
-			do_ack = orpl_anycast_parse_802154_frame((uint8_t *)frame, framelen, NULL) & DO_ACK;
+			do_ack = orpl_anycast_parse_802154_frame((uint8_t *)frame, framelen, NULL, 0) & DO_ACK;
 		} else { /* We also ack broadcast, even if we didn't modify the framer
 		and still send them with ack_required unset */
 			if(seqno != last_acked_seqno) {
@@ -190,9 +190,10 @@ orpl_softack_input_callback(const uint8_t *frame, uint8_t framelen, uint8_t **ac
 
 /* Parse a modified 802.15.4 frame, extract the neighbor EDC, and return
  * information regarding routing and software acks, described as a subset of the
- * flags DO_ACK, IS_ANYCAST, FROM_SUBDODAG, IS_RECOVERY. */
+ * flags DO_ACK, IS_ANYCAST, FROM_SUBDODAG, IS_RECOVERY.
+ * When set_dest_addr, set the destination address as ours if we have acked the frame. */
 uint8_t
-orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc)
+orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc, int set_dest_addr)
 {
   frame802154_fcf_t fcf;
   uint8_t *dest_addr = NULL;
@@ -289,7 +290,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
 
     /* Set destination address to ours in case we acked the packet to it doesn't
      * get dropped next */
-    if(do_ack) {
+    if(do_ack && set_dest_addr) {
       int i;
       for(i=0; i<8; i++) {
         dest_addr[i] = rimeaddr_node_addr.u8[7-i];
