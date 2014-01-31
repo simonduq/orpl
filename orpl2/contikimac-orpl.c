@@ -1032,7 +1032,7 @@ input_packet(void)
       packetbuf_set_attr(PACKETBUF_ATTR_EDC, 0xffff);
     }
 
-    rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER), neighbor_edc);
+    rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_edc);
   }
 
   /*  printf("cycle_start 0x%02x 0x%02x\n", cycle_start, cycle_start % CYCLE_TIME);*/
