@@ -753,7 +753,7 @@ cc2420_interrupt(void)
     memb_free(&rf_memb, rf);
   }
 
-/* TODO ORPL: fixme. This ensures there is always a single packet in queue.
+/* TODO This ensures there is always a single packet in queue.
  * With more than one packet in queue, some corner cases seem to break
  * this softack code. The current workaroud is ContikiMAC-specific.
  */
@@ -811,7 +811,7 @@ PROCESS_THREAD(cc2420_process, ev, data)
       RELEASE_LOCK();
     }
 
-    /* TODO ORPL: fixme. This ensures there is always a single packet in queue.
+    /* TODO This ensures there is always a single packet in queue.
      * With more than one packet in queue, some corner cases seem to break
      * this softack code. The current workaroud is ContikiMAC-specific.
      */
