@@ -1484,18 +1484,8 @@ output(uip_lladdr_t *localdest)
 #endif /* USE_FRAMER_HDRLEN */
 
 #if WITH_ORPL
-  //TODO ORPL: don't use dataptr (r fpcount)
-  struct app_data *dataptr = appdataptr_from_uip();
-  struct app_data data;
-  appdata_copy(&data, dataptr);
-
-  if(data.fpcount == 0) {
-     packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
+   packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
                       SICSLOWPAN_MAX_MAC_TRANSMISSIONS);
-   } else {
-     packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
-                          2);
-   }
 
   uint32_t seqno = orpl_get_curr_seqno();
   if(seqno) {
