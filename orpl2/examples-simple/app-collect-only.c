@@ -39,11 +39,11 @@
 #include "contiki-conf.h"
 #include "lib/random.h"
 #include "orpl.h"
-#include "orpl-log.h"
 #include "simple-udp.h"
 #include "cc2420.h"
 #include "node-id.h"
 #include <string.h>
+#include <stdio.h>
 
 #define APP_PAYLOAD_LEN 64
 #define SEND_INTERVAL   (60 * CLOCK_SECOND)
@@ -53,6 +53,10 @@ uip_ipaddr_t root_ipaddr;
 
 static char buf[APP_PAYLOAD_LEN];
 static struct simple_udp_connection unicast_connection;
+
+struct app_data {
+  uint32_t seqno;
+};
 
 /*---------------------------------------------------------------------------*/
 PROCESS(unicast_sender_process, "ORPL -- Collect-only Application");
@@ -76,10 +80,6 @@ void app_send_to(uint16_t id) {
   struct app_data data;
 
   data.seqno = ((uint32_t)node_id << 16) + cnt;
-  data.src = node_id;
-  data.dest = id;
-  data.hop = 0;
-  data.fpcount = 0;
 
   printf("App: sending 0x%lx\n", data.seqno);
 
