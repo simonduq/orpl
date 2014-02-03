@@ -311,7 +311,10 @@ packet_sent(void *ptr, int status, int num_transmissions)
         }
       } else {
         if(status == MAC_TX_OK) {
-          ORPL_LOG_FROM_PACKETBUF("Csma: success %u after %d tx, %d collisions", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
+          if(!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
+                                 &rimeaddr_null)) {
+            ORPL_LOG_FROM_PACKETBUF("Csma: success %u after %d tx, %d collisions", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
+          }
           PRINTF("csma: rexmit ok %d\n", n->transmissions);
         } else {
           ORPL_LOG_FROM_PACKETBUF("Csma:! dropping due to rexmit failed");
