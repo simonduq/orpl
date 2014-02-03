@@ -637,10 +637,15 @@ tcpip_ipv6_output(void)
       }
 #else /* WITH_ORPL */
       /* Set anycast MAC address instead of routing */
-      //TODO ORPL: don't use dataptr (r seqno)
-      struct app_data *dataptr = appdataptr_from_uip();
-      struct app_data data;
-      appdata_copy(&data, dataptr);
+
+      /* Get ORPL seqno as set by application */
+      uint32_t seqno = orpl_get_curr_seqno();
+      if(seqno) { /* Use seqno as set by application */
+        orpl_set_curr_seqno(seqno);
+      } else { /* Use seqno of packet being forwarded */
+        orpl_set_curr_seqno(orpl_packetbuf_seqno());
+      }
+
       if(orpl_is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
         ORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;

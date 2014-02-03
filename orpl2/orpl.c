@@ -134,6 +134,40 @@ static uint32_t blacklisted_seqnos[BLACKLIST_SIZE];
 
 static void broadcast_routing_set(void *ptr);
 
+/* Seqno of the next packet to be sent */
+static uint32_t current_seqno = 0;
+
+/* Set the 32-bit ORPL sequence number in packetbuf */
+void
+orpl_packetbuf_set_seqno(uint32_t seqno)
+{
+  packetbuf_set_attr(PACKETBUF_ATTR_ORPL_SEQNO0, seqno >> 16);
+  packetbuf_set_attr(PACKETBUF_ATTR_ORPL_SEQNO1, seqno);
+}
+
+/* Get the 32-bit ORPL sequence number from packetbuf */
+uint32_t
+orpl_packetbuf_seqno()
+{
+  return ((uint32_t)packetbuf_attr(PACKETBUF_ATTR_ORPL_SEQNO0) << 16) |
+    packetbuf_attr(PACKETBUF_ATTR_ORPL_SEQNO1);
+}
+
+/* Get the current ORPL sequence number */
+uint32_t
+orpl_get_curr_seqno()
+{
+  uint32_t ret = current_seqno;
+  current_seqno = 0; /* The app must set the seqno before next transmission */
+  return ret;
+}
+
+/* Set the current ORPL sequence number before sending */
+void orpl_set_curr_seqno(uint32_t seqno)
+{
+  current_seqno = seqno;
+}
+
 /* Build a global IPv6 address from a link-local IPv6 address */
 static void
 global_ipaddr_from_llipaddr(uip_ipaddr_t *gipaddr, const uip_ipaddr_t *llipaddr)

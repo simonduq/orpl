@@ -284,14 +284,14 @@ packet_sent(void *ptr, int status, int num_transmissions)
 #if WITH_ORPL && BLOOM_FP_RECOVERY
           /* Failed downwards transmission. Trigger false positive recovery. */
         	if(!orpl_is_root() && packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) == direction_down) {
-        		//TODO ORPL: don't use dataptr (r seqno, rw fpcount)
+        		//TODO ORPL: don't use dataptr (rw fpcount)
         		struct app_data *dataptr = appdataptr_from_packetbuf();
         		struct app_data data;
         		appdata_copy(&data, dataptr);
         		ORPL_LOG_FROM_PACKETBUF("Csma:! triggering false positive recovery %u after %d tx, %d c.", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
         		free_packet(n, q);
         		/* GIve another try, upwards this time, after inserting in blacklist. */
-        		orpl_blacklist_insert(data.seqno);
+        		orpl_blacklist_insert(orpl_packetbuf_seqno());
         		dataptr->fpcount += 1; /* Increment false positive count */
         		ORPL_LOG_FROM_PACKETBUF("Tcpip: false positive recovery %u", dataptr->fpcount);
         		packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 0);

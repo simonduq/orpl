@@ -62,12 +62,14 @@ enum anycast_direction_e {
 struct anycast_parsing_info {
   uint8_t do_ack;
   enum anycast_direction_e direction;
+  uint16_t neighbor_edc;
+  uint32_t seqno;
 };
 
 /* Set the destination link-layer address in packetbuf in case of anycast */
 void orpl_anycast_set_packetbuf_addr();
 /* Parse a modified 802.15.4 frame */
-struct anycast_parsing_info orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc, int set_dest_addr);
+struct anycast_parsing_info orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, int set_dest_addr);
 /* Anycast-specific inits */
 void orpl_anycast_init();
 

@@ -79,9 +79,10 @@ void app_send_to(uint16_t id) {
   data.hop = 0;
   data.fpcount = 0;
 
-  set_ipaddr_from_id(&dest_ipaddr, id);
-
   ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending");
+
+  orpl_set_curr_seqno(data.seqno);
+  set_ipaddr_from_id(&dest_ipaddr, id);
 
   *((struct app_data*)buf) = data;
   simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &dest_ipaddr);

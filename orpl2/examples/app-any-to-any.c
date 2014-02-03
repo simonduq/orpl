@@ -117,13 +117,14 @@ app_send_to(uint16_t id, int ping, uint32_t seqno)
   data.fpcount = 0;
   data.ping = ping;
 
-  set_ipaddr_from_id(&dest_ipaddr, id);
-
   if(ping) {
     ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending ping");
   } else {
     ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending pong");
   }
+
+  orpl_set_curr_seqno(data.seqno);
+  set_ipaddr_from_id(&dest_ipaddr, id);
 
   *((struct app_data*)buf) = data;
   simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &dest_ipaddr);

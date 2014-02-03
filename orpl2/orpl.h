@@ -58,6 +58,14 @@ extern int sending_routing_set;
 /* Total number of broadcast sent */
 extern uint32_t orpl_broadcast_count;
 
+/* Set the 32-bit ORPL sequence number in packetbuf */
+void orpl_packetbuf_set_seqno(uint32_t seqno);
+/* Get the 32-bit ORPL sequence number from packetbuf */
+uint32_t orpl_packetbuf_seqno();
+/* Set the current ORPL sequence number before sending */
+void orpl_set_curr_seqno(uint32_t seqno);
+/* Get the current ORPL sequence number */
+uint32_t orpl_get_curr_seqno();
 /* Returns 1 if EDC is frozen, i.e. we are not allowed to change edc */
 int orpl_is_edc_frozen();
 /* Returns 1 routing sets are active, i.e. we can start inserting and merging */

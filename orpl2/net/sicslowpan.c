@@ -1497,6 +1497,11 @@ output(uip_lladdr_t *localdest)
                           2);
    }
 
+  uint32_t seqno = orpl_get_curr_seqno();
+  if(seqno) {
+    orpl_packetbuf_set_seqno(seqno);
+  }
+
   if(localdest == (uip_lladdr_t *)&anycast_addr_up) {
     packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_up);
   } else if(localdest == (uip_lladdr_t *)&anycast_addr_down) {
