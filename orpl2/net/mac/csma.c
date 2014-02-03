@@ -282,7 +282,8 @@ packet_sent(void *ptr, int status, int num_transmissions)
           queuebuf_update_attr_from_packetbuf(q->buf);
         } else {
 #if WITH_ORPL && BLOOM_FP_RECOVERY
-        	if(!orpl_is_root() && packetbuf_attr(PACKETBUF_ATTR_GOING_UP) == 0) { /* Failed downwards transmission. Trigger false positive recovery. */
+          /* Failed downwards transmission. Trigger false positive recovery. */
+        	if(!orpl_is_root() && packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) == direction_down) {
         		//TODO ORPL: don't use dataptr (r seqno, rw fpcount)
         		struct app_data *dataptr = appdataptr_from_packetbuf();
         		struct app_data data;
@@ -294,7 +295,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
         		dataptr->fpcount += 1; /* Increment false positive count */
         		ORPL_LOG_FROM_PACKETBUF("Tcpip: false positive recovery %u", dataptr->fpcount);
         		packetbuf_set_attr(PACKETBUF_ATTR_PENDING, 0);
-        		packetbuf_set_attr(PACKETBUF_ATTR_GOING_UP, 1);
+        		packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_recover);
         		packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS, SICSLOWPAN_CONF_MAX_MAC_TRANSMISSIONS);
         		packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &anycast_addr_recover);
         		NETSTACK_MAC.send(sent, cptr);

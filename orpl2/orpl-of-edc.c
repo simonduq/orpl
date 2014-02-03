@@ -3,6 +3,7 @@
 #define DEBUG DEBUG_ANNOTATE
 #include "net/uip-debug.h"
 #include "orpl.h"
+#include "orpl-anycast.h"
 #include "deployment.h"
 #include "packetbuf.h"
 
@@ -96,7 +97,7 @@ neighbor_link_callback(rpl_parent_t *parent, int known, int edc)
   /* Calculate the average hop-by-hop EDC, i.e. the average strobe time
    * required before getting our anycast ACKed. We compute this only for
    * upwards traffic, as the metric and the topology are directed to the root */
-  if(packetbuf_attr(PACKETBUF_ATTR_GOING_UP)) {
+  if(packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) == direction_up) {
     uint16_t curr_hbh_edc = packetbuf_attr(PACKETBUF_ATTR_EDC); /* The strobe time for this packet */
     uint16_t weighted_curr_hbh_edc;
     uint16_t hbh_edc_prev = hbh_edc;

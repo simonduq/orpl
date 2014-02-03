@@ -1426,10 +1426,17 @@ output(uip_lladdr_t *localdest)
    }
 
   if(localdest == (uip_lladdr_t *)&anycast_addr_up) {
-    packetbuf_set_attr(PACKETBUF_ATTR_GOING_UP, 1);
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_up);
+  } else if(localdest == (uip_lladdr_t *)&anycast_addr_down) {
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_down);
+  } else if(localdest == (uip_lladdr_t *)&anycast_addr_nbr) {
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_nbr);
+  } else if(localdest == (uip_lladdr_t *)&anycast_addr_recover) {
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_recover);
   } else {
-    packetbuf_set_attr(PACKETBUF_ATTR_GOING_UP, 0);
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_none);
   }
+
 #endif /* WITH_ORPL */
 
   if(callback) {

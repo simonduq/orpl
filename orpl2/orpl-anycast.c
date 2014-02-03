@@ -48,14 +48,6 @@
 #include "net/mac/frame802154.h"
 #include <string.h>
 
-enum anycast_direction_e {
-  direction_none,
-  direction_up,
-  direction_down,
-  direction_nbr,
-  direction_recover
-};
-
 /* The different link-layer addresses used for anycast */
 rimeaddr_t anycast_addr_up = {.u8 = {0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0xfa}};
 rimeaddr_t anycast_addr_down = {.u8 = {0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb}};
@@ -164,7 +156,7 @@ orpl_softack_input_callback(const uint8_t *frame, uint8_t framelen, uint8_t **ac
 
 	if(is_data) {
 		if(ack_required) { /* This is unicast or unicast, parse it */
-			do_ack = orpl_anycast_parse_802154_frame((uint8_t *)frame, framelen, NULL) & DO_ACK;
+			do_ack = orpl_anycast_parse_802154_frame((uint8_t *)frame, framelen, NULL).do_ack;
 		} else { /* We also ack broadcast, even if we didn't modify the framer
 		and still send them with ack_required unset */
 			if(seqno != last_acked_seqno) {
@@ -189,22 +181,20 @@ orpl_softack_input_callback(const uint8_t *frame, uint8_t framelen, uint8_t **ac
 }
 
 /* Parse a modified 802.15.4 frame, extract the neighbor EDC, and return
- * information regarding routing and software acks, described as a subset of the
- * flags DO_ACK, IS_ANYCAST, FROM_SUBDODAG, IS_RECOVERY. */
-uint8_t
+ * information regarding routing and software acks. */
+struct anycast_parsing_info
 orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc)
 {
   frame802154_fcf_t fcf;
   uint8_t *dest_addr = NULL;
   uint8_t *src_addr = NULL;
-  int do_ack = 0;
-  int is_anycast = 0;
-  int from_subdodag = 0;
-  int recovery = 0;
+  struct anycast_parsing_info ret;
   int i;
 
+  memset(&ret, 0, sizeof(ret));
+
   if(len < 3) {
-    return 0;
+    return ret;
   }
 
   /* Decode the FCF */
@@ -215,7 +205,6 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
 
   /* This is a unciast or anycast data frame */
   if(fcf.frame_type == FRAME802154_DATAFRAME && fcf.ack_required == 1) {
-    enum anycast_direction_e anycast_direction = direction_none;
     uint32_t seqno;
     uint8_t src_addr_host_order[8];
     uint8_t dest_addr_host_order[8];
@@ -228,14 +217,8 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
     }
 
     /* Parse the destination address */
-    if(anycast_parse_addr((rimeaddr_t*)dest_addr, &anycast_direction, &current_edc, &seqno)) {
+    if(anycast_parse_addr((rimeaddr_t*)dest_addr, &ret.direction, &current_edc, &seqno)) {
       rpl_rank_t curr_edc = orpl_current_edc();
-
-      /* This is anycast, make forwarding decision */
-      is_anycast = IS_ANYCAST;
-      if(anycast_direction == direction_up) {
-        from_subdodag = FROM_SUBDODAG;
-      }
 
       /* Calculate destination IPv6 address */
       /* TODO ORPL: better document this addressing */
@@ -245,40 +228,39 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
 
       if(uip_ip6addr_cmp(&dest_ipv6, &global_ipv6)) {
         /* Take the data if it is for us */
-        do_ack = DO_ACK;
+        ret.do_ack = 1;
       } else if(rimeaddr_cmp((rimeaddr_t*)dest_addr_host_order, &rimeaddr_node_addr)) {
         /* Unicast, for us */
-        do_ack = 1;
-      } else if(anycast_direction == direction_up) {
+        ret.do_ack = 1;
+      } else if(ret.direction == direction_up) {
         /* Routing upwards. ACK if our rank is better. */
         if(current_edc > EDC_W && curr_edc < current_edc - EDC_W) {
-          do_ack = DO_ACK;
+          ret.do_ack = 1;
         } else {
           /* We don't route upwards, now check if we are a common ancester of the source
            * and destination. We do this by checking our routing set against the destination. */
           if(!orpl_blacklist_contains(seqno) && orpl_routing_set_contains(&dest_ipv6)) {
             /* Traffic is going up but we have destination in our routing set.
              * Ack it and start routing downwards (towards the destination) */
-            do_ack = DO_ACK;
+            ret.do_ack = 1;
           }
         }
-      } else if(anycast_direction == direction_down) {
+      } else if(ret.direction == direction_down) {
         /* Routing downwards. ACK if destination is reachable neighbor or
          * we it is in subdodag and we have a worse rank */
         if(!orpl_blacklist_contains(seqno)
             && (orpl_is_reachable_neighbor(&dest_ipv6)
                 || (curr_edc > EDC_W && curr_edc - EDC_W > current_edc
                 && orpl_routing_set_contains(&dest_ipv6)))) {
-          do_ack = DO_ACK;
+          ret.do_ack = 1;
         }
 
-      } else if(anycast_direction == direction_recover) {
+      } else if(ret.direction == direction_recover) {
         /* This packet is sent back from a child that experiences false positive. Only
          * the nodes that did forward this same packet downwards before are allowed to
          * take the packet back during a recovery, before sending down again. This is
          * to avoid duplicates during the recovery process. */
-        recovery = IS_RECOVERY;
-        do_ack = orpl_acked_down_contains(seqno, (const rimeaddr_t *)src_addr_host_order);
+        ret.do_ack = orpl_acked_down_contains(seqno, (const rimeaddr_t *)src_addr_host_order);
       }
     }
 
@@ -289,7 +271,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
 
     /* Set destination address to ours in case we acked the packet to it doesn't
      * get dropped next */
-    if(do_ack) {
+    if(ret.do_ack) {
       int i;
       for(i=0; i<8; i++) {
         dest_addr[i] = rimeaddr_node_addr.u8[7-i];
@@ -298,7 +280,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_e
   }
 
   /* Return routing/acknowledging information */
-  return do_ack | is_anycast | from_subdodag | recovery;
+  return ret;
 }
 
 /* Anycast-specific inits */

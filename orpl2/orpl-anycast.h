@@ -45,21 +45,29 @@
 
 #define EXTRA_ACK_LEN    10 /* Number of bytes we add to standard IEEE 802.15.4 ACK frames */
 
-#define DO_ACK            1 /* Set if a link-layer ack must be sent */
-#define IS_ANYCAST        2 /* Set if the packet is a anycast */
-#define FROM_SUBDODAG     4 /* Set if the packet is coming from the sub-dodag (going upwards) */
-#define IS_RECOVERY       8 /* Set if the packet comes from false positive recovery */
-
 /* The different link-layer addresses used for anycast */
 extern rimeaddr_t anycast_addr_up;
 extern rimeaddr_t anycast_addr_down;
 extern rimeaddr_t anycast_addr_nbr;
 extern rimeaddr_t anycast_addr_recover;
 
+enum anycast_direction_e {
+  direction_none,
+  direction_up,
+  direction_down,
+  direction_nbr,
+  direction_recover
+};
+
+struct anycast_parsing_info {
+  uint8_t do_ack;
+  enum anycast_direction_e direction;
+};
+
 /* Set the destination link-layer address in packetbuf in case of anycast */
 void orpl_anycast_set_packetbuf_addr();
 /* Parse a modified 802.15.4 frame */
-uint8_t orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc);
+struct anycast_parsing_info orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, uint16_t *neighbor_edc);
 /* Anycast-specific inits */
 void orpl_anycast_init();
 

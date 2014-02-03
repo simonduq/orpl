@@ -924,7 +924,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
 				  				  collision_count, seqno);
 		  //TODO ORPL: don't use dataptr (r seqno)
 		  struct app_data *dataptr = appdataptr_from_packetbuf();
-		  if(dataptr && !packetbuf_attr(PACKETBUF_ATTR_GOING_UP)) {
+		  if(dataptr && packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) == direction_down) {
 			  struct app_data data;
 			  appdata_copy(&data, dataptr);
 			  orpl_acked_down_insert(data.seqno, dest);
@@ -1022,11 +1022,11 @@ input_packet(void)
 
   if(packetbuf_datalen() > 0) {
     uint16_t neighbor_edc;
-    int ret = orpl_anycast_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc);
+    struct anycast_parsing_info ret = orpl_anycast_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc);
 
-    if(ret & IS_ANYCAST) {
-      packetbuf_set_attr(PACKETBUF_ATTR_IS_ANYCAST, (ret & IS_ANYCAST) != 0);
-      packetbuf_set_attr(PACKETBUF_ATTR_IS_RECOVERY, (ret & IS_RECOVERY) != 0);
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, ret.direction);
+
+    if(ret.direction != direction_none) {
       packetbuf_set_attr(PACKETBUF_ATTR_EDC, neighbor_edc);
       packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
     } else {
@@ -1147,7 +1147,7 @@ input_packet(void)
         /* Duplicate detection */
         {
           int i;
-          if(!packetbuf_attr(PACKETBUF_ATTR_IS_RECOVERY)) {
+          if(packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) != direction_recover) {
             for(i = 0; i < MAX_SEQNOS_APP; ++i) {
               /* base the comparison on both seqno and false-positive count, so that fp recovery packet
                * are not dropped as app-layer duplicates */
