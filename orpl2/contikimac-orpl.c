@@ -1130,20 +1130,12 @@ input_packet(void)
 #endif /* CONTIKIMAC_CONF_COMPOWER */
 
       PRINTDEBUG("contikimac: data (%u)\n", packetbuf_datalen());
-      
-      if(dataptr && packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
 
-        uint32_t seqno = data.seqno;
-
-        dataptr->hop += 1;
-        if(dataptr->hop > 128) {
-          ORPL_LOG_FROM_PACKETBUF("Cmac: dropping from %d after too many hops", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
-          return;
-        }
-
+      if(packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) != direction_none) {
         /* Duplicate detection */
         {
           int i;
+          uint32_t seqno = orpl_packetbuf_seqno();
           if(packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) != direction_recover) {
             for(i = 0; i < MAX_SEQNOS_APP; ++i) {
               /* base the comparison on both seqno and false-positive count, so that fp recovery packet
