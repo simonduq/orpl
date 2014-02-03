@@ -48,11 +48,7 @@
 #include "lib/random.h"
 #include <string.h>
 
-#if IN_COOJA
 #define DEBUG DEBUG_ANNOTATE
-#else
-#define DEBUG DEBUG_NONE
-#endif
 #include "net/uip-debug.h"
 
 /* The global IPv6 address in use */
