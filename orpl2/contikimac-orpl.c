@@ -1051,7 +1051,7 @@ input_packet(void)
     packetbuf_set_datalen(chdr->len);
 #endif /* WITH_CONTIKIMAC_HEADER */
 
-    if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
+    if(packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) != direction_none) {
       static uint8_t prev_seqno = 0;
       if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) != prev_seqno) {
         rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), packetbuf_attr(PACKETBUF_ATTR_EDC));
@@ -1065,7 +1065,7 @@ input_packet(void)
                      &rimeaddr_node_addr) ||
         rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
                      &rimeaddr_null)) &&
-       (!(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST) && !packetbuf_attr(PACKETBUF_ATTR_ACKED)))
+       (!(packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) != direction_none && !packetbuf_attr(PACKETBUF_ATTR_ACKED)))
        ) { /* Anycast that we don't ack are not for us */
       /* This is a regular packet that is destined to us or to the
          broadcast address. */
