@@ -103,9 +103,9 @@ void orpl_routing_set_print();
 #endif /* __orpl_routing_set_H__ */
 
 /*
- * Some basics about Bloom Filter
+ * Some basics about Bloom filter
  *
- * m: the size of the Bloom Filter in bits
+ * m: the size of the Bloom filter in bits
  * n: number of entries (elements inserted)
  * k: number of hashes
  *
