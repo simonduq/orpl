@@ -1022,18 +1022,17 @@ input_packet(void)
 
   if(packetbuf_datalen() > 0) {
     uint16_t neighbor_edc;
-    struct anycast_parsing_info ret = orpl_anycast_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc);
+    struct anycast_parsing_info ret = orpl_anycast_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), &neighbor_edc, 1);
 
     packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, ret.direction);
 
     if(ret.direction != direction_none) {
       packetbuf_set_attr(PACKETBUF_ATTR_EDC, neighbor_edc);
-      packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
     } else {
       packetbuf_set_attr(PACKETBUF_ATTR_EDC, 0xffff);
     }
 
-    rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER), neighbor_edc);
+    rpl_set_parent_rank((uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER), neighbor_edc);
   }
 
   /*  printf("cycle_start 0x%02x 0x%02x\n", cycle_start, cycle_start % CYCLE_TIME);*/

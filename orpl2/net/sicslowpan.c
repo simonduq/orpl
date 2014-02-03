@@ -1411,34 +1411,6 @@ output(uip_lladdr_t *localdest)
   packetbuf_clear();
   rime_ptr = packetbuf_dataptr();
 
-#if WITH_ORPL
-  //TODO ORPL: don't use dataptr (r fpcount)
-  struct app_data *dataptr = appdataptr_from_uip();
-  struct app_data data;
-  appdata_copy(&data, dataptr);
-
-  if(data.fpcount == 0) {
-     packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
-                      SICSLOWPAN_MAX_MAC_TRANSMISSIONS);
-   } else {
-     packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
-                          2);
-   }
-
-  if(localdest == (uip_lladdr_t *)&anycast_addr_up) {
-    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_up);
-  } else if(localdest == (uip_lladdr_t *)&anycast_addr_down) {
-    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_down);
-  } else if(localdest == (uip_lladdr_t *)&anycast_addr_nbr) {
-    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_nbr);
-  } else if(localdest == (uip_lladdr_t *)&anycast_addr_recover) {
-    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_recover);
-  } else {
-    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_none);
-  }
-
-#endif /* WITH_ORPL */
-
   if(callback) {
     /* call the attribution when the callback comes, but set attributes
        here ! */
@@ -1510,6 +1482,34 @@ output(uip_lladdr_t *localdest)
 #else /* USE_FRAMER_HDRLEN */
   framer_hdrlen = 21;
 #endif /* USE_FRAMER_HDRLEN */
+
+#if WITH_ORPL
+  //TODO ORPL: don't use dataptr (r fpcount)
+  struct app_data *dataptr = appdataptr_from_uip();
+  struct app_data data;
+  appdata_copy(&data, dataptr);
+
+  if(data.fpcount == 0) {
+     packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
+                      SICSLOWPAN_MAX_MAC_TRANSMISSIONS);
+   } else {
+     packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
+                          2);
+   }
+
+  if(localdest == (uip_lladdr_t *)&anycast_addr_up) {
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_up);
+  } else if(localdest == (uip_lladdr_t *)&anycast_addr_down) {
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_down);
+  } else if(localdest == (uip_lladdr_t *)&anycast_addr_nbr) {
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_nbr);
+  } else if(localdest == (uip_lladdr_t *)&anycast_addr_recover) {
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_recover);
+  } else {
+    packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_none);
+  }
+
+#endif /* WITH_ORPL */
 
   //if((int)uip_len - (int)uncomp_hdr_len > (int)MAC_MAX_PAYLOAD - framer_hdrlen - (int)rime_hdr_len) {
   if(uip_len - uncomp_hdr_len > MAC_MAX_PAYLOAD - rime_hdr_len) { // TODO ORPL: check this
