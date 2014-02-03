@@ -53,7 +53,7 @@ static int active_index;
 
 /* In the bitmap case, we uniquely map all global ipv6 in the
    * network to a unique index, based on a deployment-specific
-   * node_id_from_ipaddr(ipv6) funciton */
+   * node_id_from_ipaddr(ipv6) function */
 
 #include "deployment.h"
 /* Returns the 64-bit hash of a given global IPv6 */

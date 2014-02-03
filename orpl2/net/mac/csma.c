@@ -53,7 +53,6 @@
 
 #include "node-id.h"
 #if WITH_ORPL
-#include "deployment.h"
 #include "net/uip.h"
 #include "orpl.h"
 #include "orpl-anycast.h"
@@ -288,7 +287,8 @@ packet_sent(void *ptr, int status, int num_transmissions)
         		struct app_data *dataptr = appdataptr_from_packetbuf();
         		struct app_data data;
         		appdata_copy(&data, dataptr);
-        		ORPL_LOG_FROM_PACKETBUF("Csma:! triggering false positive recovery %u after %d tx, %d c.", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
+        		ORPL_LOG_FROM_PACKETBUF("Csma:! triggering false positive recovery %u after %d tx, %d c.",
+        		    ORPL_LOG_NODEID_FROM_RIMEADDR(&n->addr) , n->transmissions, n->collisions);
         		free_packet(n, q);
         		/* GIve another try, upwards this time, after inserting in blacklist. */
         		orpl_blacklist_insert(orpl_packetbuf_seqno());
@@ -302,7 +302,8 @@ packet_sent(void *ptr, int status, int num_transmissions)
         	} else
 #endif /* WITH_ORPL && BLOOM_FP_RECOVERY */
         	{
-        	ORPL_LOG_FROM_PACKETBUF("Csma:! dropping %u after %d tx, %d collisions", node_id_from_rimeaddr(&n->addr) , n->transmissions, n->collisions);
+        	ORPL_LOG_FROM_PACKETBUF("Csma:! dropping %u after %d tx, %d collisions",
+        	    ORPL_LOG_NODEID_FROM_RIMEADDR(&n->addr) , n->transmissions, n->collisions);
           PRINTF("csma: drop with status %d after %d transmissions, %d collisions\n",
                  status, n->transmissions, n->collisions);
           free_packet(n, q);
@@ -313,7 +314,8 @@ packet_sent(void *ptr, int status, int num_transmissions)
         if(status == MAC_TX_OK) {
           if(!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
                                  &rimeaddr_null)) {
-            ORPL_LOG_FROM_PACKETBUF("Csma: success %u after %d tx, %d collisions", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
+            ORPL_LOG_FROM_PACKETBUF("Csma: success %u after %d tx, %d collisions",
+                ORPL_LOG_NODEID_FROM_RIMEADDR(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
           }
           PRINTF("csma: rexmit ok %d\n", n->transmissions);
         } else {
@@ -432,18 +434,7 @@ send_packet(mac_callback_t sent, void *ptr)
 static void
 input_packet(void)
 {
-#if WITH_ORPL
-  uint16_t src_id = node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER));
-  if(src_id != 0) {
-    if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
-                       &rimeaddr_null)) {
-    }
-
-    NETSTACK_NETWORK.input();
-  }
-#else /* WITH_ORPL */
   NETSTACK_NETWORK.input();
-#endif /* WITH_ORPL */
 }
 /*---------------------------------------------------------------------------*/
 static int

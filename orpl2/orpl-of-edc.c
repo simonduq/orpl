@@ -4,7 +4,6 @@
 #include "net/uip-debug.h"
 #include "orpl.h"
 #include "orpl-anycast.h"
-#include "deployment.h"
 #include "packetbuf.h"
 
 static void reset(rpl_dag_t *);

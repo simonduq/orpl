@@ -38,7 +38,6 @@
  *         Simon Duquennoy <simonduq@sics.se>
  */
 
-#include "deployment.h"
 #include "orpl.h"
 #include "orpl-log.h"
 #include "orpl-routing-set.h"

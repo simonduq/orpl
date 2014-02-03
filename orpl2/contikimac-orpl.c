@@ -52,7 +52,6 @@
 #include "sys/rtimer.h"
 #include "orpl.h"
 #include "orpl-anycast.h"
-#include "deployment.h"
 #include "orpl-log.h"
 
 #include <string.h>
@@ -919,7 +918,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
   if(!is_broadcast) {
 	  if(got_strobe_ack) {
 		  ORPL_LOG_FROM_PACKETBUF("Cmac: acked by %u s %u c %d seq %u",
-				  				  node_id_from_rimeaddr(dest),
+				  				  ORPL_LOG_NODEID_FROM_RIMEADDR(dest),
 				  				  strobe_duration,
 				  				  collision_count, seqno);
 		  /* Set link-layer address of the node that acked the packet */
@@ -1142,7 +1141,8 @@ input_packet(void)
                * are not dropped as app-layer duplicates */
               if(seqno == received_app_seqnos[i].seqno) {
                 /* Drop the packet. */
-            	ORPL_LOG_FROM_PACKETBUF("Cmac:! dropping app-layer duplicate from %d", node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
+            	ORPL_LOG_FROM_PACKETBUF("Cmac:! dropping app-layer duplicate from %d",
+            	    ORPL_LOG_NODEID_FROM_RIMEADDR(packetbuf_addr(PACKETBUF_ADDR_SENDER)));
                 return;
               }
             }
@@ -1154,7 +1154,7 @@ input_packet(void)
         }
 
         ORPL_LOG_FROM_PACKETBUF("Cmac: input from %d",
-            node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER))
+            ORPL_LOG_NODEID_FROM_RIMEADDR(packetbuf_addr(PACKETBUF_ADDR_SENDER))
         );
       }
 
