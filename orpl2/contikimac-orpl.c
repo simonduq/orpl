@@ -922,6 +922,8 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
 				  				  node_id_from_rimeaddr(dest),
 				  				  strobe_duration,
 				  				  collision_count, seqno);
+		  /* Set link-layer address of the node that acked the packet */
+		  packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, dest);
 		  //TODO ORPL: don't use dataptr (r seqno)
 		  struct app_data *dataptr = appdataptr_from_packetbuf();
 		  if(dataptr && packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) == direction_down) {
