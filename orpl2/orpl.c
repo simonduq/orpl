@@ -66,6 +66,10 @@ int sending_routing_set = 0;
 /* Total number of broadcast sent */
 uint32_t orpl_broadcast_count = 0;
 
+/* Defines whether all neighbors we have a good link to should be included
+ * in our routing set, regardless of them being children or not. */
+#define ORPL_ALL_NEIGHBORS_IN_ROUTING_SET 1
+
 /* When set:
  * - stop updating EDC after N seconds
  * - start updating Routing sets only after N+1 seconds
@@ -327,15 +331,17 @@ udp_received_routing_set(struct simple_udp_connection *c,
   if(orpl_are_routing_set_active() && orpl_is_reachable_neighbor(&sender_global_ipaddr)) {
     int bit_count_before = orpl_routing_set_count_bits();
     int bit_count_after;
+    int is_reachable_child = orpl_is_reachable_child(&sender_global_ipaddr);
 
-    /* Routing set are active and the neighbor is reachable,
-     * insert the neighbor in our routing set */
-    orpl_routing_set_insert(&sender_global_ipaddr);
-    ORPL_LOG("ORPL: inserting neighbor into routing set: ");
-    ORPL_LOG_IPADDR(&sender_global_ipaddr);
-    ORPL_LOG("\n");
+    if(is_reachable_child || ORPL_ALL_NEIGHBORS_IN_ROUTING_SET) {
+      /* Insert the neighbor in our routing set */
+      orpl_routing_set_insert(&sender_global_ipaddr);
+      ORPL_LOG("ORPL: inserting neighbor into routing set: ");
+      ORPL_LOG_IPADDR(&sender_global_ipaddr);
+      ORPL_LOG("\n");
+    }
 
-    if(orpl_is_reachable_child(&sender_global_ipaddr)) {
+    if(is_reachable_child) {
       /* The neighbor is a child, merge its routing set in ours */
       orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->rs);
       ORPL_LOG("ORPL: merging routing set from: ");
