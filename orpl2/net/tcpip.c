@@ -640,16 +640,16 @@ tcpip_ipv6_output(void)
 
       /* Get ORPL seqno as set by application */
       uint32_t seqno = orpl_get_curr_seqno();
-      if(seqno) { /* Use seqno as set by application */
-        orpl_set_curr_seqno(seqno);
-      } else { /* Use seqno of packet being forwarded */
-        orpl_set_curr_seqno(orpl_packetbuf_seqno());
+      if(seqno == 0) { /* We are not originator of the data, set
+      seqno of packet being forwarded */
+        seqno = orpl_packetbuf_seqno();
       }
+      orpl_set_curr_seqno(seqno);
 
       if(orpl_is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
         ORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;
-      } else if(orpl_routing_set_contains(&UIP_IP_BUF->destipaddr) && !orpl_blacklist_contains(data.seqno)) {
+      } else if(orpl_routing_set_contains(&UIP_IP_BUF->destipaddr) && !orpl_blacklist_contains(seqno)) {
         ORPL_LOG_FROM_UIP("Tcpip: fw down");
         anycast_addr = &anycast_addr_down;
       } else if(orpl_is_root() == 0){
