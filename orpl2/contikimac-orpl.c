@@ -1082,14 +1082,6 @@ input_packet(void)
         ctimer_stop(&ct);
       }
 
-      struct app_data *dataptr = NULL;
-      if(packetbuf_attr(PACKETBUF_ATTR_IS_ANYCAST)) {
-        //TODO ORPL: don't use dataptr (r seqno, rw hop)
-        dataptr = appdataptr_from_packetbuf();
-      }
-      struct app_data data;
-      appdata_copy(&data, dataptr);
-
       /* Check for duplicate packet by comparing the sequence number
          of the incoming packet with the last few ones we saw. */
       if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), /* duplicate detection for broadcast only */
