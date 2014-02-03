@@ -1,10 +1,14 @@
 #include "net/rpl/rpl-private.h"
 
+#include "deployment.h"
+#if IN_COOJA
 #define DEBUG DEBUG_ANNOTATE
+#else
+#define DEBUG DEBUG_NONE
+#endif
 #include "net/uip-debug.h"
 #include "orpl.h"
 #include "orpl-anycast.h"
-#include "deployment.h"
 #include "packetbuf.h"
 
 static void reset(rpl_dag_t *);

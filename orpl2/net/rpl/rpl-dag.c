@@ -729,7 +729,7 @@ We just update the rank and return the DAG. */
       RPL_LOLLIPOP_INCREMENT(instance->dtsn_out);
       rpl_schedule_dao(instance);
     }
-    rpl_reset_dio_timer(instance);
+    //MF-ORPL rpl_reset_dio_timer(instance); don't reset DIO for every parent switch
   } else if(best_dag->rank != old_rank) {
     PRINTF("RPL: Preferred parent update, rank changed from %u to %u\n",
   	(unsigned)old_rank, best_dag->rank);
@@ -1225,6 +1225,12 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
       }
     }
   }
+  if(dio->rank == INFINITE_RANK) {
+    PRINTF("RPL: Ignoring DIO from node with infinite rank: ");
+    PRINT6ADDR(from);
+    PRINTF("\n");
+    return;
+  }//MF-ORPL
 
   if(instance == NULL) {
     PRINTF("RPL: New instance detected: Joining...\n");
