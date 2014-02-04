@@ -41,14 +41,9 @@
 /* Used for modification of core files */
 #define WITH_ORPL 1
 
-/* ORPL is not compatible with ContikiMAC phase-lock */
-#undef CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION
-#define CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION 0
-
-/* ORPL is not compatible with sending bursts, we therefore
- * set the number of CCA before transmitting to 2 only */
-#undef CONTIKIMAC_CONF_CCA_COUNT_MAX_TX
-#define CONTIKIMAC_CONF_CCA_COUNT_MAX_TX 2 /* default 6 */
+/* EDC is the objective function used by ORPL */
+#undef RPL_CONF_OF
+#define RPL_CONF_OF rpl_of_edc
 
 /* ORPL does not have such notion of min hop rank increase */
 #undef RPL_CONF_MIN_HOPRANKINC
@@ -66,6 +61,23 @@
 /* ORPL runs without IPv6 NA/ND */
 #undef UIP_CONF_ND6_SEND_NA
 #define UIP_CONF_ND6_SEND_NA 0
+
+/* ORPL does not use RPL's normal downwards routing */
+#undef RPL_CONF_MOP
+#define RPL_CONF_MOP RPL_MOP_NO_DOWNWARD_ROUTES
+
+/* ORPL does not use traditional routing entries */
+#undef UIP_CONF_MAX_ROUTES
+#define UIP_CONF_MAX_ROUTES  0
+
+/* ORPL is not compatible with ContikiMAC phase-lock */
+#undef CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION
+#define CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION 0
+
+/* ORPL is not compatible with sending bursts, we therefore
+ * set the number of CCA before transmitting to 2 only */
+#undef CONTIKIMAC_CONF_CCA_COUNT_MAX_TX
+#define CONTIKIMAC_CONF_CCA_COUNT_MAX_TX 2 /* default 6 */
 
 /* Our softack implementation for cc2420 requires to disable DCO synch */
 #undef DCOSYNCH_CONF_ENABLED
@@ -94,17 +106,5 @@
 /* Contiki netstack: FRAMER */
 #undef NETSTACK_CONF_FRAMER
 #define NETSTACK_CONF_FRAMER  framer_802154
-
-/* ORPL does not use RPL's normal downwards routing */
-#undef RPL_CONF_MOP
-#define RPL_CONF_MOP RPL_MOP_NO_DOWNWARD_ROUTES
-
-/* ORPL does not use traditional routing entries */
-#undef UIP_CONF_MAX_ROUTES
-#define UIP_CONF_MAX_ROUTES  0
-
-/* EDC is the objective function used by ORPL */
-#undef RPL_CONF_OF
-#define RPL_CONF_OF rpl_of_edc
 
 #endif /* __ORPL_CONF_H__ */
