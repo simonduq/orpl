@@ -409,14 +409,13 @@ when implementing extended software acks */
     hc06_ptr += 2;
     return 2 << bitpos; /* 16-bits */
   } else
-#else /* WITH_ORPL */
+#endif /* !WITH_ORPL */
   {
     /* do not compress IID => xxxx::IID */
     memcpy(hc06_ptr, &ipaddr->u16[4], 8);
     hc06_ptr += 8;
     return 1 << bitpos; /* 64-bits */
   }
-#endif /* WITH_ORPL */
 }
 
 /*-------------------------------------------------------------------- */
