@@ -92,6 +92,8 @@ static uint16_t last_broadcasted_edc = 0xffff;
 
 /* Set to 1 when only upwards routing is enabled */
 static int orpl_up_only = 0;
+/* A flag that tells whether we are root or not */
+static int is_root_flag = 0;
 
 /* UDP port used for routing set broadcasting */
 #define ROUTING_SET_PORT 4444
@@ -203,7 +205,7 @@ orpl_are_routing_set_active()
 int
 orpl_is_root()
 {
-  return orpl_current_edc() == 0;
+  return is_root_flag;
 }
 
 /* Returns current EDC of the node */
@@ -314,7 +316,7 @@ broadcast_routing_set(void *ptr)
     struct routing_set_broadcast_s routing_set_broadcast;
     rpl_rank_t curr_edc = orpl_current_edc();
 
-    ORPL_LOG("ORPL: broadcast routing set (edc=%u)\n", routing_set_broadcast.edc);
+    ORPL_LOG("ORPL: broadcast routing set (edc=%u)\n", curr_edc);
 
     /* Build data structure to be broadcasted */
     last_broadcasted_edc = curr_edc;
@@ -483,6 +485,7 @@ void
 orpl_init(const uip_ipaddr_t *ipaddr, int is_root, int up_only)
 {
   orpl_up_only = up_only;
+  is_root_flag = is_root;
 
   if(is_root) {
     ANNOTATE("#A color=red\n");
