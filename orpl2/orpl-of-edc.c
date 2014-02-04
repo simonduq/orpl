@@ -212,6 +212,10 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
         (10 * (edc % EDC_DIVISOR)) / EDC_DIVISOR);
   }
 
+  /* The EDC does not depend on the (unused) parent parameter.
+   * It is an estimate of the number of cycles to reach the root with
+   * multi-path routing, using all potential forwarders. We therefore
+   * update the ORPL EDC every time we calculate it. */
   orpl_update_edc(edc);
 
   return edc;
