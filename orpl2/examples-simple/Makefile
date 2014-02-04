@@ -1,4 +1,6 @@
 CONTIKI=/home/user/contiki-2.7
+ORPL=..
+
 CONTIKI_PROJECT = app-collect-only
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 TARGET=sky
@@ -9,4 +11,4 @@ CFLAGS+= -DUIP_CONF_IPV6_RPL
 
 all: $(CONTIKI_PROJECT)
 
-include Makefile.include
+include $(ORPL)/Makefile.include

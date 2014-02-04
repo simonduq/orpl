@@ -65,7 +65,7 @@ DEV     = nullradio.c
 
 include $(CONTIKI)/core/net/Makefile.uip
 include $(CONTIKI)/core/net/rpl/Makefile.rpl
-include ../Makefile.orpl
+include $(ORPL)/Makefile.orpl
 
 CTK     = ctk.c
 CTKVNC  = $(CTK) ctk-vncserver.c libconio.c vnc-server.c vnc-out.c ctk-vncfont.c
@@ -80,7 +80,7 @@ CONTIKI_SOURCEFILES += $(CONTIKIFILES)
 
 CONTIKIDIRS_REL = dev lib net net/mac net/rime net/rpl sys cfs ctk lib/ctk loader .
 CONTIKIDIRS += ${addprefix $(CONTIKI)/core/, $(CONTIKIDIRS_REL) }
-CONTIKIDIRS_LOCAL += . tools ${addprefix ../, $(CONTIKIDIRS_REL) }
+CONTIKIDIRS_ORPL += ${addprefix $(ORPL)/, $(CONTIKIDIRS_REL) }
 
 oname = ${patsubst %.c,%.o,${patsubst %.S,%.o,$(1)}}
 
@@ -161,7 +161,7 @@ CONTIKI_TARGET_DIRS_CONCAT = ${addprefix ${dir $(target_makefile)}, \
 CONTIKI_CPU_DIRS_CONCAT    = ${addprefix $(CONTIKI_CPU)/, \
                                $(CONTIKI_CPU_DIRS)}
 
-SOURCEDIRS = $(CONTIKIDIRS_LOCAL) $(PROJECTDIRS) $(CONTIKI_TARGET_DIRS_CONCAT) \
+SOURCEDIRS = . $(CONTIKIDIRS_ORPL) $(PROJECTDIRS) $(CONTIKI_TARGET_DIRS_CONCAT) \
              $(CONTIKI_CPU_DIRS_CONCAT) $(CONTIKIDIRS) $(APPDS) ${dir $(target_makefile)}
 
 vpath %.c $(SOURCEDIRS)
