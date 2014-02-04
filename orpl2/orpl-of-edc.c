@@ -108,7 +108,7 @@ neighbor_link_callback(rpl_parent_t *parent, int known, int edc)
       hbh_edc = ((hbh_edc_prev * EDC_ALPHA) + (weighted_curr_hbh_edc * (EDC_SCALE-EDC_ALPHA))) / EDC_SCALE;
     }
 
-    PRINTF("EDC: updated hbh_edc %u -> %u (%u %u)\n", hbh_edc_prev, hbh_edc, curr_hbh_edc, weighted_curr_hbh_edc);
+    PRINTF("ORPL: updated hbh_edc %u -> %u (%u %u)\n", hbh_edc_prev, hbh_edc, curr_hbh_edc, weighted_curr_hbh_edc);
 
     /* Calculate EDC and update rank*/
     if(parent && parent->dag) {
