@@ -279,7 +279,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
              transmitting this packet. */
           queuebuf_update_attr_from_packetbuf(q->buf);
         } else {
-#if WITH_ORPL && BLOOM_FP_RECOVERY
+#if WITH_ORPL && ORPL_WITH_FP_RECOVERY
           /* Failed downwards transmission. Trigger false positive recovery. */
         	if(!orpl_is_root() && packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) == direction_down) {
         		ORPL_LOG_FROM_PACKETBUF("Csma:! triggering false positive recovery %u after %d tx, %d c.",
@@ -294,7 +294,7 @@ packet_sent(void *ptr, int status, int num_transmissions)
         		packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &anycast_addr_recover);
         		NETSTACK_MAC.send(sent, cptr);
         	} else
-#endif /* WITH_ORPL && BLOOM_FP_RECOVERY */
+#endif /* WITH_ORPL && ORPL_WITH_FP_RECOVERY */
         	{
         	ORPL_LOG_FROM_PACKETBUF("Csma:! dropping %u after %d tx, %d collisions",
         	    ORPL_LOG_NODEID_FROM_RIMEADDR(&n->addr) , n->transmissions, n->collisions);

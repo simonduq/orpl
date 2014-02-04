@@ -241,7 +241,7 @@ orpl_is_reachable_child(const uip_ipaddr_t *ipaddr)
   llipaddr_from_global_ipaddr(&llipaddr, ipaddr);
   rpl_rank_t neighbor_edc = rpl_get_parent_rank(uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)&llipaddr));
   return ipaddr && orpl_is_reachable_neighbor(ipaddr) &&
-      neighbor_edc > EDC_W && (neighbor_edc - EDC_W) > curr_edc;
+      neighbor_edc > ORPL_EDC_W && (neighbor_edc - ORPL_EDC_W) > curr_edc;
 }
 
 /* Insert a packet sequence number to the blacklist

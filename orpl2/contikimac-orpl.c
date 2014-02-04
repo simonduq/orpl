@@ -55,6 +55,9 @@
 
 #include <string.h>
 
+/* We add a jitter in the ContikiMAC wakeups to avoid having the same collisions repeatedly */
+#define WITH_CONTIKIMIAC_JITTER 1
+
 /* TX/RX cycles are synchronized with neighbor wake periods */
 #ifdef CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION
 #define WITH_PHASE_OPTIMIZATION      CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION

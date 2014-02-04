@@ -65,6 +65,7 @@ DEV     = nullradio.c
 
 include $(CONTIKI)/core/net/Makefile.uip
 include $(CONTIKI)/core/net/rpl/Makefile.rpl
+include ../Makefile.orpl
 
 CTK     = ctk.c
 CTKVNC  = $(CTK) ctk-vncserver.c libconio.c vnc-server.c vnc-out.c ctk-vncfont.c

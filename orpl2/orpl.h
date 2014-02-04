@@ -42,6 +42,18 @@
 
 #include "net/rpl/rpl.h"
 
+#ifdef ORPL_CONF_EDC_W
+#define ORPL_EDC_W ORPL_CONF_EDC_W
+#else /* ORPL_CONF_EDC_W */
+#define ORPL_EDC_W 64
+#endif /* ORPL_CONF_EDC_W */
+
+#ifdef ORPL_CONF_WITH_FP_RECOVERY
+#define ORPL_WITH_FP_RECOVERY ORPL_CONF_WITH_FP_RECOVERY
+#else /* ORPL_CONF_WITH_FP_RECOVERY */
+#define ORPL_WITH_FP_RECOVERY 1
+#endif /* ORPL_CONF_WITH_FP_RECOVERY */
+
 /* Default implementation for logging functions */
 #ifndef ORPL_LOG
 #define ORPL_LOG(...) PRINTF(...)

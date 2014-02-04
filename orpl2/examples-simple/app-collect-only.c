@@ -45,18 +45,12 @@
 #include <string.h>
 #include <stdio.h>
 
-#define APP_PAYLOAD_LEN 64
 #define SEND_INTERVAL   (60 * CLOCK_SECOND)
 #define UDP_PORT 1234
 #define ROOT_ID 1
 uip_ipaddr_t root_ipaddr;
 
-static char buf[APP_PAYLOAD_LEN];
 static struct simple_udp_connection unicast_connection;
-
-struct app_data {
-  uint32_t seqno;
-};
 
 /*---------------------------------------------------------------------------*/
 PROCESS(unicast_sender_process, "ORPL -- Collect-only Application");
@@ -71,22 +65,19 @@ receiver(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  printf("App: received 0x%lx\n", ((struct app_data *)data)->seqno);
+  printf("App: received 0x%lx\n", *((uint32_t*)data));
 }
 /*---------------------------------------------------------------------------*/
 void app_send_to(uint16_t id) {
 
   static unsigned int cnt;
-  struct app_data data;
+  uint32_t seqno = ((uint32_t)node_id << 16) + cnt;
 
-  data.seqno = ((uint32_t)node_id << 16) + cnt;
+  printf("App: sending 0x%lx\n", seqno);
 
-  printf("App: sending 0x%lx\n", data.seqno);
+  orpl_set_curr_seqno(seqno);
 
-  orpl_set_curr_seqno(data.seqno);
-
-  *((struct app_data*)buf) = data;
-  simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &root_ipaddr);
+  simple_udp_sendto(&unicast_connection, &seqno, sizeof(seqno), &root_ipaddr);
 
   cnt++;
 }
@@ -98,9 +89,6 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
   uip_ipaddr_t global_ipaddr;
 
   PROCESS_BEGIN();
-
-  cc2420_set_txpower(RF_POWER);
-  cc2420_set_cca_threshold(RSSI_THR);
 
   printf("App: %u starting\n", node_id);
 

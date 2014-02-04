@@ -69,7 +69,7 @@ add_to_forwarder_set(rpl_parent_t *curr_p, rpl_rank_t curr_p_rank, uint16_t ackc
   );
 
   /* Finally add W to EDC (cost of forwarding) */
-  tentative_edc = A + B + EDC_W;
+  tentative_edc = A + B + ORPL_EDC_W;
 
   PRINTF("EDC %5u ", tentative_edc);
 

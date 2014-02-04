@@ -228,7 +228,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, int set_dest_addr)
         ret.do_ack = 1;
       } else if(ret.direction == direction_up) {
         /* Routing upwards. ACK if our rank is better. */
-        if(ret.neighbor_edc > EDC_W && curr_edc < ret.neighbor_edc - EDC_W) {
+        if(ret.neighbor_edc > ORPL_EDC_W && curr_edc < ret.neighbor_edc - ORPL_EDC_W) {
           ret.do_ack = 1;
         } else {
           /* We don't route upwards, now check if we are a common ancester of the source
@@ -244,7 +244,7 @@ orpl_anycast_parse_802154_frame(uint8_t *data, uint8_t len, int set_dest_addr)
          * we it is in subdodag and we have a worse rank */
         if(!orpl_blacklist_contains(ret.seqno)
             && (orpl_is_reachable_neighbor(&dest_ipv6)
-                || (curr_edc > EDC_W && curr_edc - EDC_W > ret.neighbor_edc
+                || (curr_edc > ORPL_EDC_W && curr_edc - ORPL_EDC_W > ret.neighbor_edc
                 && orpl_routing_set_contains(&dest_ipv6)))) {
           ret.do_ack = 1;
         }
