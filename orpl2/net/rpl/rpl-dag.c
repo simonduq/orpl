@@ -781,7 +781,7 @@ rpl_nullify_parent(rpl_parent_t *parent)
 #if WITH_ORPL
   /* We don't have a preferred parent in ORPL.
    * We simply recalculate our EDC. */
-  instance->of->calculate_rank(p, 0);
+  instance->of->calculate_rank(parent, 0);
   return;
 #endif /* WITH_ORPL */
 
