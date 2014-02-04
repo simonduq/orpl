@@ -778,14 +778,15 @@ rpl_remove_parent(rpl_parent_t *parent)
 void
 rpl_nullify_parent(rpl_parent_t *parent)
 {
+  rpl_dag_t *dag = parent->dag;
+
 #if WITH_ORPL
   /* We don't have a preferred parent in ORPL.
    * We simply recalculate our EDC. */
-  instance->of->calculate_rank(parent, 0);
+  dag->instance->of->calculate_rank(parent, 0);
   return;
 #endif /* WITH_ORPL */
 
-  rpl_dag_t *dag = parent->dag;
   /* This function can be called when the preferred parent is NULL, so we
      need to handle this condition in order to trigger uip_ds6_defrt_rm. */
   if(parent == dag->preferred_parent || dag->preferred_parent == NULL) {
