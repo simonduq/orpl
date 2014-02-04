@@ -70,6 +70,7 @@ typedef uint32_t rtimer_clock_t;
 #undef UIP_CONF_FWCACHE_SIZE
 #define UIP_CONF_FWCACHE_SIZE    4
 
+#include "tools/orpl-log.h"
 #include "orpl-contiki-conf.h"
 
 #endif /* __PROJECT_CONF_H__ */

@@ -41,6 +41,7 @@
 #include "net/rpl/rpl-private.h"
 #include "net/packetbuf.h"
 #include "tools/orpl-log.h"
+#include <stdio.h>
 #include <string.h>
 
 extern int forwarder_set_size;
@@ -96,4 +97,11 @@ log_appdataptr(struct app_data *dataptr)
         orpl_current_edc(),
         curr_dio_interval
         );
+}
+
+/* Return node id from its rime address */
+uint16_t
+log_node_id_from_rimeaddr(const void *rimeaddr)
+{
+  return node_id_from_rimeaddr((const rimeaddr_t *)rimeaddr);
 }

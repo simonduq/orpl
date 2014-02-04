@@ -45,6 +45,7 @@
 #include "simple-energest.h"
 #include "simple-udp.h"
 #include "cc2420.h"
+#include <stdio.h>
 
 #define SEND_INTERVAL   (4 * CLOCK_SECOND)
 #define UDP_PORT 1234

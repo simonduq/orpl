@@ -37,9 +37,6 @@
 #ifndef ORPL_LOG_H
 #define ORPL_LOG_H
 
-#include <stdio.h>
-#include "deployment.h"
-
 /* Data structure copied at the end of all data packets, making it possible
  * to trace packets at every hop, from every layer. */
 struct app_data {
@@ -59,6 +56,8 @@ struct app_data *appdataptr_from_uip();
 struct app_data *appdataptr_from_packetbuf();
 /* Log information about a data packet along with ORPL routing information */
 void log_appdataptr(struct app_data *dataptr);
+/* Return node id from its rime address */
+uint16_t log_node_id_from_rimeaddr(const void *rimeaddr);
 
 #define ORPL_LOG(...) printf(__VA_ARGS__)
 #define ORPL_LOG_FROM_APPDATAPTR(appdataptr, ...) { printf(__VA_ARGS__); log_appdataptr(appdataptr); }
@@ -68,6 +67,6 @@ void log_appdataptr(struct app_data *dataptr);
 #define ORPL_LOG_IPADDR(addr) uip_debug_ipaddr_print(addr)
 #define ORPL_LOG_LLADDR(addr) uip_debug_lladdr_print(addr)
 
-#define ORPL_LOG_NODEID_FROM_RIMEADDR node_id_from_rimeaddr
+#define ORPL_LOG_NODEID_FROM_RIMEADDR log_node_id_from_rimeaddr
 
 #endif /* ORPL_LOG */

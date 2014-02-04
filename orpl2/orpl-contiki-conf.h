@@ -35,8 +35,8 @@
  */
 
 
-#ifndef __ORPL_CONF_H__
-#define __ORPL_CONF_H__
+#ifndef __ORPL_CONTIKI_CONF_H__
+#define __ORPL_CONTIKI_CONF_H__
 
 /* Used for modification of core files */
 #define WITH_ORPL 1
@@ -107,4 +107,4 @@
 #undef NETSTACK_CONF_FRAMER
 #define NETSTACK_CONF_FRAMER  framer_802154
 
-#endif /* __ORPL_CONF_H__ */
+#endif /* __ORPL_CONTIKI_CONF_H__ */
