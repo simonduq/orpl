@@ -47,6 +47,8 @@
 #include "lib/random.h"
 #include <string.h>
 
+#if WITH_ORPL
+
 #define DEBUG DEBUG_ANNOTATE
 #include "net/uip-debug.h"
 
@@ -507,3 +509,5 @@ orpl_init(const uip_ipaddr_t *ipaddr, int is_root, int up_only)
                         udp_received_routing_set);
 
 }
+
+#endif /* WITH_ORPL */

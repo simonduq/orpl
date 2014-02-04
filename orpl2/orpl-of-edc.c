@@ -6,6 +6,8 @@
 #include "orpl-anycast.h"
 #include "packetbuf.h"
 
+#if WITH_ORPL
+
 static void reset(rpl_dag_t *);
 static void neighbor_link_callback(rpl_parent_t *, int, int);
 static rpl_parent_t *best_parent(rpl_parent_t *, rpl_parent_t *);
@@ -248,3 +250,5 @@ update_metric_container(rpl_instance_t *instance)
   /* We don't use any metric container (we only
    * use the rank field of DIO messages) */
 }
+
+#endif /* WITH_ORPL */

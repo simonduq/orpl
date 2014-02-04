@@ -57,6 +57,8 @@
 
 #include "sys/timetable.h"
 
+#if WITH_ORPL
+
 volatile int need_flush;
 extern int contikimac_keep_radio_on;
 
@@ -998,3 +1000,5 @@ cc2420_set_cca_threshold(int value)
   RELEASE_LOCK();
 }
 /*---------------------------------------------------------------------------*/
+
+#endif /* WITH_ORPL */

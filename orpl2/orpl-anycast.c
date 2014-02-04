@@ -46,6 +46,8 @@
 #include "net/mac/frame802154.h"
 #include <string.h>
 
+#if WITH_ORPL
+
 /* The different link-layer addresses used for anycast */
 rimeaddr_t anycast_addr_up = {.u8 = {0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0xfa, 0xfa}};
 rimeaddr_t anycast_addr_down = {.u8 = {0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb, 0xfb}};
@@ -279,3 +281,5 @@ orpl_anycast_init()
   /* Subscribe to 802.15.4 softack driver */
   cc2420_softack_subscribe(orpl_softack_input_callback, orpl_softack_acked_callback);
 }
+
+#endif /* WITH_ORPL */

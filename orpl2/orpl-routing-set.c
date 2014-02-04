@@ -39,10 +39,13 @@
  */
 
 #include "net/uip.h"
+#include "orpl.h"
 #include "orpl-routing-set.h"
 #include "node-id.h"
 #include <string.h>
 #include <stdio.h>
+
+#if WITH_ORPL
 
 /* We maintain two routing sets, one "active" and one "warmup" to implement ageing. */
 static routing_set routing_sets[2];
@@ -202,3 +205,5 @@ orpl_routing_set_print()
   }
   printf("\nRouting set: end\n");
 }
+
+#endif /* WITH_ORPL */

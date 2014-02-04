@@ -55,6 +55,8 @@
 
 #include <string.h>
 
+#if WITH_ORPL
+
 /* We add a jitter in the ContikiMAC wakeups to avoid having the same collisions repeatedly */
 #define WITH_CONTIKIMIAC_JITTER 1
 
@@ -1228,3 +1230,5 @@ contikimac_debug_print(void)
   return 0;
 }
 /*---------------------------------------------------------------------------*/
+
+#endif /* WITH_ORPL */
