@@ -40,7 +40,7 @@
 #include <stdio.h>
 #include "tools/deployment.h"
 
-/* Data strcutrues copied at the end of all data packets, making it possible
+/* Data structure copied at the end of all data packets, making it possible
  * to trace packets at every hop, from every layer. */
 struct app_data {
   uint32_t seqno;
