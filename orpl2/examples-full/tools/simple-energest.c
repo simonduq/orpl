@@ -40,6 +40,7 @@
 #include "simple-energest.h"
 #include "orpl.h"
 #include "orpl-routing-set.h"
+#include <stdio.h>
 
 static uint32_t last_tx, last_rx, last_time;
 static uint32_t delta_tx, delta_rx, delta_time;
