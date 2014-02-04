@@ -66,9 +66,8 @@
 int
 rpl_verify_header(int uip_ext_opt_offset)
 {
-#if WITH_ORPL /* TODO ORPL: implement RPL ext header for ORPL instead
-of only relying on anycast address for up/down flag. Reenable ext header
-verification. */
+#if WITH_ORPL /* The current ORPL implementation
+does not rely on RPL extension headers */
   return 0;
 #endif /* WITH_ORPL */
 

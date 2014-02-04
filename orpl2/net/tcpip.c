@@ -634,7 +634,7 @@ tcpip_ipv6_output(void)
           return;
         }
       }
-#else /* WITH_ORPL */
+#else /* !WITH_ORPL */
       /* Set anycast MAC address instead of routing */
 
       /* Get ORPL seqno as set by application */
@@ -677,7 +677,7 @@ tcpip_ipv6_output(void)
     	  uip_len = 0;
     	  return;
       }
-#endif /* WITH_ORPL */
+#endif /* !WITH_ORPL */
 #if TCPIP_CONF_ANNOTATE_TRANSMISSIONS
       if(nexthop != NULL) {
         static uint8_t annotate_last;

@@ -948,7 +948,7 @@ uncompress_hdr_hc06(uint16_t ip_len)
   }
   uncomp_hdr_len += UIP_IPH_LEN;
 
-  /* Fix from original code that makes it possible to have compressed
+  /* ORPL note: Fix from original code that makes it possible to have compressed
    * UDP headers even though the next header field itself isn't compressed.
    * Needed by ORPL, doesn't hurt other cases. */
   if((iphc0 & SICSLOWPAN_IPHC_NH_C)) {
@@ -1410,6 +1410,9 @@ output(uip_lladdr_t *localdest)
   packetbuf_clear();
   rime_ptr = packetbuf_dataptr();
 
+  packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
+                     SICSLOWPAN_MAX_MAC_TRANSMISSIONS);
+
   if(callback) {
     /* call the attribution when the callback comes, but set attributes
        here ! */
@@ -1483,9 +1486,6 @@ output(uip_lladdr_t *localdest)
 #endif /* USE_FRAMER_HDRLEN */
 
 #if WITH_ORPL
-   packetbuf_set_attr(PACKETBUF_ATTR_MAX_MAC_TRANSMISSIONS,
-                      SICSLOWPAN_MAX_MAC_TRANSMISSIONS);
-
   uint32_t seqno = orpl_get_curr_seqno();
   if(seqno) {
     orpl_packetbuf_set_seqno(seqno);
@@ -1505,8 +1505,12 @@ output(uip_lladdr_t *localdest)
 
 #endif /* WITH_ORPL */
 
-  //if((int)uip_len - (int)uncomp_hdr_len > (int)MAC_MAX_PAYLOAD - framer_hdrlen - (int)rime_hdr_len) {
-  if(uip_len - uncomp_hdr_len > MAC_MAX_PAYLOAD - rime_hdr_len) { // TODO ORPL: check this
+#if WITH_ORPL /* Workaround to avoid fragmented DIOs */
+  if(uip_len - uncomp_hdr_len > MAC_MAX_PAYLOAD - rime_hdr_len) {
+#else /* WITH_ORPL */
+  if((int)uip_len - (int)uncomp_hdr_len > (int)MAC_MAX_PAYLOAD - framer_hdrlen - (int)rime_hdr_len) {
+#endif /* WITH_ORPL */
+
 #if SICSLOWPAN_CONF_FRAG
     struct queuebuf *q;
     /*

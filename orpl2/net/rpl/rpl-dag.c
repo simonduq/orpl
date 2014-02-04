@@ -76,8 +76,10 @@ static rpl_of_t * const objective_functions[] = {&RPL_OF};
 #endif /* !RPL_CONF_GROUNDED */
 
 /*---------------------------------------------------------------------------*/
+#if WITH_ORPL
 /* Per-parent RPL information */
 NBR_TABLE_GLOBAL(rpl_parent_t, rpl_parents);
+#endif /* WITH_ORPL */
 /*---------------------------------------------------------------------------*/
 /* Allocate instance table. */
 rpl_instance_t instance_table[RPL_MAX_INSTANCES];
@@ -92,8 +94,14 @@ rpl_dag_init(void)
 rpl_rank_t
 rpl_get_parent_rank(uip_lladdr_t *addr)
 {
-  return rpl_get_parent_rank_default(addr, 0);
+  rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
+  if(p != NULL) {
+    return p->rank;
+  } else {
+    return 0;
+  }
 }
+#if WITH_ORPL
 /*---------------------------------------------------------------------------*/
 rpl_rank_t
 rpl_get_parent_rank_default(uip_lladdr_t *addr, rpl_rank_t default_value)
@@ -134,6 +142,7 @@ rpl_set_parent_bc_ackcount(uip_lladdr_t *addr, uint16_t bc_ackcount)
     p->bc_ackcount = bc_ackcount;
   }
 }
+#endif /* WITH_ORPL */
 /*---------------------------------------------------------------------------*/
 uint16_t
 rpl_get_parent_link_metric(uip_lladdr_t *addr)
@@ -589,7 +598,9 @@ rpl_add_parent(rpl_dag_t *dag, rpl_dio_t *dio, uip_ipaddr_t *addr)
     p->rank = dio->rank;
     p->dtsn = dio->dtsn;
     p->link_metric = RPL_INIT_LINK_METRIC * RPL_DAG_MC_ETX_DIVISOR;
+#if WITH_ORPL
     p->bc_ackcount = 0;
+#endif /* WITH_ORPL */
 #if RPL_DAG_MC != RPL_DAG_MC_NONE
     memcpy(&p->mc, &dio->mc, sizeof(p->mc));
 #endif /* RPL_DAG_MC != RPL_DAG_MC_NONE */
@@ -800,9 +811,7 @@ rpl_nullify_parent(rpl_parent_t *parent)
         uip_ds6_defrt_rm(dag->instance->def_route);
         dag->instance->def_route = NULL;
       }
-      if(dag->instance->mop != RPL_MOP_NO_DOWNWARD_ROUTES) {
-        dao_output(parent, RPL_ZERO_LIFETIME);
-      }
+      dao_output(parent, RPL_ZERO_LIFETIME);
     }
   }
 
@@ -1245,6 +1254,7 @@ rpl_process_dio(uip_ipaddr_t *from, rpl_dio_t *dio)
     rpl_add_dag(from, dio);
     return;
   }
+
 
   if(dio->rank < ROOT_RANK(instance)) {
     PRINTF("RPL: Ignoring DIO with too low rank: %u\n",

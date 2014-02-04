@@ -354,7 +354,7 @@ enum {
   PACKETBUF_ATTR_ORPL_DIRECTION,
   PACKETBUF_ATTR_ROUTING_SET,
   PACKETBUF_ATTR_ACKED,
-#endif /* ORPL */
+#endif /* WITH_ORPL */
 
   /* Scope 1 attributes: used between two neighbors only. */
   PACKETBUF_ATTR_RELIABLE,
