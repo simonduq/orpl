@@ -42,6 +42,18 @@
 
 #include "net/rpl/rpl.h"
 
+/* Default implementation for logging functions */
+#ifndef ORPL_LOG
+#define ORPL_LOG(...) PRINTF(...)
+#define ORPL_LOG_FROM_APPDATAPTR(appdataptr, ...) PRINTF(...)
+#define ORPL_LOG_NULL(...) PRINTF(...)
+#define ORPL_LOG_FROM_UIP(...) PRINTF(...)
+#define ORPL_LOG_FROM_PACKETBUF(...) PRINTF(...)
+#define ORPL_LOG_IPADDR(addr) PRINT6ADDR(addr)
+#define ORPL_LOG_LLADDR(addr) PRINTLLADDR(addr)
+#define ORPL_LOG_NODEID_FROM_RIMEADDR(addr) ((addr).u8[RIMEADDR_SIZE-1])
+#endif /* ORPL_LOG */
+
 /* Fixed point divisor */
 #define EDC_DIVISOR 128
 /* From rtimer ticks to EDC fixed point metric */

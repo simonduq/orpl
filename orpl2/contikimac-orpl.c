@@ -52,7 +52,6 @@
 #include "sys/rtimer.h"
 #include "orpl.h"
 #include "orpl-anycast.h"
-#include "orpl-log.h"
 
 #include <string.h>
 

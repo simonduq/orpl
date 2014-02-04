@@ -39,7 +39,6 @@
  */
 
 #include "orpl.h"
-#include "orpl-log.h"
 #include "orpl-routing-set.h"
 #include "orpl-anycast.h"
 #include "net/packetbuf.h"

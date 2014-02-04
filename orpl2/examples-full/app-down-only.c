@@ -40,7 +40,6 @@
 #include "contiki-conf.h"
 #include "lib/random.h"
 #include "orpl.h"
-#include "orpl-log.h"
 #include "orpl-routing-set.h"
 #include "deployment.h"
 #include "simple-energest.h"

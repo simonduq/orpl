@@ -49,7 +49,6 @@
 
 #if WITH_ORPL
 #include "orpl.h"
-#include "orpl-log.h"
 #include "orpl-anycast.h"
 #include "orpl-routing-set.h"
 #endif /* WITH_ORPL */

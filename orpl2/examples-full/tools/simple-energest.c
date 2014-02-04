@@ -38,7 +38,6 @@
 #include "contiki.h"
 #include "node-id.h"
 #include "simple-energest.h"
-#include "orpl-log.h"
 #include "orpl.h"
 #include "orpl-routing-set.h"
 

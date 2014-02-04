@@ -40,7 +40,7 @@
 #include "net/rpl/rpl.h"
 #include "net/rpl/rpl-private.h"
 #include "net/packetbuf.h"
-#include "orpl-log.h"
+#include "tools/orpl-log.h"
 #include <string.h>
 
 extern int forwarder_set_size;

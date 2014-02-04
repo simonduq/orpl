@@ -5,7 +5,7 @@ TARGET=sky
 
 WITH_UIP6=1
 UIP_CONF_IPV6=1
-CFLAGS+= -DUIP_CONF_IPV6_RPL
+CFLAGS+= -DUIP_CONF_IPV6_RPL -include tools/orpl-log.h
 PROJECT_SOURCEFILES += orpl.c orpl-anycast.c orpl-of-edc.c orpl-routing-set.c contikimac-orpl.c cc2420-softack.c deployment.c simple-energest.c orpl-log.c
 
 CYCLE_TIME ?= 500
