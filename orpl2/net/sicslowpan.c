@@ -949,7 +949,7 @@ uncompress_hdr_hc06(uint16_t ip_len)
 
   /* ORPL note: Fix from original code that makes it possible to have compressed
    * UDP headers even though the next header field itself isn't compressed.
-   * Needed by ORPL, doesn't hurt other cases. */
+   * Needed by ORPL, doesn't hurt in other cases. */
   if((iphc0 & SICSLOWPAN_IPHC_NH_C)) {
       /* The next header is compressed, NHC is following */
       if((*hc06_ptr & SICSLOWPAN_NHC_UDP_MASK) == SICSLOWPAN_NHC_UDP_ID) {
@@ -1501,7 +1501,6 @@ output(uip_lladdr_t *localdest)
   } else {
     packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_none);
   }
-
 #endif /* WITH_ORPL */
 
 #if WITH_ORPL /* Workaround to avoid fragmented DIOs */
