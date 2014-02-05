@@ -339,13 +339,11 @@ send_packet(mac_callback_t sent, void *ptr)
 
 #if WITH_ORPL
     /* Using packetbuf address would lead to a single queue for all anycasts.
-     * We use the IPv6 UUID to have one queue per destination instead. */
-  const rimeaddr_t *addr = (const rimeaddr_t *)(((uint8_t*)&UIP_IP_BUF->destipaddr)+8);
-#else /* WITH_ORPL */
-  const rimeaddr_t *addr = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
-#endif /* WITH_ORPL */
+       * We use the IPv6 UUID to have one queue per destination instead. */
+    const rimeaddr_t *addr = (const rimeaddr_t *)(((uint8_t*)&UIP_IP_BUF->destipaddr)+8);
 
-#if WITH_ORPL
+    /* Set PACKETBUF_ATTR_ROUTING_SET for outgoing routing set broadcast,
+     * so that the proper ORPL callback function can be called after transmission. */
     if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
     		&rimeaddr_null)) {
     	ORPL_LOG("Csma: send broadcast (%u bytes)\n", packetbuf_datalen());
@@ -353,13 +351,24 @@ send_packet(mac_callback_t sent, void *ptr)
     		packetbuf_set_attr(PACKETBUF_ATTR_ROUTING_SET, 1);
     	}
     }
+
+    /* ORPL requires randomized initial seqnos for acked broadcats and its
+     * duplicate detection mechanism */
+    while(seqno == 0) {
+      /* PACKETBUF_ATTR_MAC_SEQNO cannot be zero, due to a pecuilarity
+             in framer-802154.c. */
+      seqno = random_rand();
+    }
+#else /* WITH_ORPL */
+    const rimeaddr_t *addr = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
+
+    if(seqno == 0) {
+      /* PACKETBUF_ATTR_MAC_SEQNO cannot be zero, due to a pecuilarity
+         in framer-802154.c. */
+      seqno++;
+    }
 #endif /* WITH_ORPL */
 
-  while(seqno == 0) {
-    /* PACKETBUF_ATTR_MAC_SEQNO cannot be zero, due to a pecuilarity
-           in framer-802154.c. */
-    seqno = random_rand();
-  }
   packetbuf_set_attr(PACKETBUF_ATTR_MAC_SEQNO, seqno++);
 
   /* Look for the neighbor entry */
