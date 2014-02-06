@@ -1486,7 +1486,6 @@ output(uip_lladdr_t *localdest)
   } else {
     packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, direction_none);
   }
-
 #endif /* WITH_ORPL */
 
 #if WITH_ORPL /* Workaround to avoid fragmented DIOs */
