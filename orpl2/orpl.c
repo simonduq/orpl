@@ -49,7 +49,7 @@
 
 #if WITH_ORPL
 
-#define DEBUG DEBUG_ANNOTATE
+#define DEBUG DEBUG_NONE//DEBUG_ANNOTATE
 #include "net/uip-debug.h"
 
 /* The global IPv6 address in use */
@@ -396,7 +396,7 @@ void
 orpl_trickle_callback(rpl_instance_t *instance)
 {
   curr_instance = instance;
-
+#if !FREEZE_TOPOLOGY
   if(orpl_are_routing_set_active()) {
     /* Swap routing sets to implement ageing */
     ORPL_LOG("ORPL: swapping routing sets\n");
@@ -405,7 +405,7 @@ orpl_trickle_callback(rpl_instance_t *instance)
     /* Request transmission of routing set */
     request_routing_set_broadcast();
   }
-
+#endif /*!FREEZE_TOPOLOGY*/
   /* We recalculate the ranks periodically */
   rpl_recalculate_ranks();
 }
