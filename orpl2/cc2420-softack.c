@@ -143,7 +143,7 @@ PROCESS(cc2420_process, "CC2420-softack driver");
     CC2420_SPI_DISABLE();                                    \
   } while(0)
 
-#define FIFOP_THRESHOLD 42
+#define FIFOP_THRESHOLD 41
 
 int cc2420_on(void);
 int cc2420_off(void);
