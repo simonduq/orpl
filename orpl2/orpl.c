@@ -45,6 +45,7 @@
 #include "net/uip-ds6.h"
 #include "net/rpl/rpl-private.h"
 #include "lib/random.h"
+#include "dev/leds.h"
 #include <string.h>
 
 #if WITH_ORPL
@@ -222,12 +223,13 @@ int
 orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
 {
   uip_ipaddr_t llipaddr;
-  llipaddr_from_global_ipaddr(&llipaddr, ipaddr);
+  uip_lladdr_t lladdr;
   /* We don't consider neighbors as reachable before we have send
    * at least 4 broadcasts to estimate link quality */
   if(ipaddr != NULL && orpl_broadcast_count >= 4) {
-    rpl_parent_t *p = rpl_get_parent(
-            uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)&llipaddr));
+    llipaddr_from_global_ipaddr(&llipaddr, ipaddr);
+    uip_ds6_set_lladdr_from_iid(&lladdr, (uip_ipaddr_t *)&llipaddr);
+    rpl_parent_t *p = rpl_get_parent(&lladdr);
     uint16_t bc_count = p == NULL ? 0 : p->bc_ackcount;
     return 100*bc_count/orpl_broadcast_count >= NEIGHBOR_PRR_THRESHOLD;
   } else {

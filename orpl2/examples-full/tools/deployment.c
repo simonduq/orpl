@@ -124,11 +124,36 @@ get_node_id_from_index(uint16_t index)
 #endif
 }
 
+/* Sets a rimeaddr from an IPv6 */
+void
+set_rimeaddr_from_iid(rimeaddr_t *lladdr, const uip_ipaddr_t *ipaddr)
+{
+  set_rimeaddr_from_id(lladdr, node_id_from_ipaddr(ipaddr));
+}
+
 /* Sets the IID of an IPv6 from a link-layer address */
 void
 set_iid_from_rimeaddr(uip_ipaddr_t *ipaddr, const rimeaddr_t *lladdr)
 {
-  set_iid_from_id(ipaddr, node_id_from_rimeaddr((const rimeaddr_t*)lladdr));
+  set_iid_from_id(ipaddr, node_id_from_rimeaddr(lladdr));
+}
+
+/* Sets a rimeaddr from a node-id */
+void
+set_rimeaddr_from_id(rimeaddr_t *lladdr, uint16_t id)
+{
+#if IN_COOJA
+  lladdr->u8[0] = 0x00;
+  lladdr->u8[1] = 0x12;
+  lladdr->u8[2] = 0x74;
+  lladdr->u8[3] = id;
+  lladdr->u8[4] = 0x00;
+  lladdr->u8[5] = id;
+  lladdr->u8[6] = id;
+  lladdr->u8[7] = id;
+#else
+#error NYI
+#endif
 }
 
 /* Sets the IID of an IPv6 from a node-id */

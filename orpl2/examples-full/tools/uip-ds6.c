@@ -527,6 +527,43 @@ uip_ds6_select_src(uip_ipaddr_t *src, uip_ipaddr_t *dst)
 
 /*---------------------------------------------------------------------------*/
 void
+uip_ds6_set_lladdr_from_iid_(uip_lladdr_t *lladdr, uip_ipaddr_t *ipaddr)
+{
+  /* We consider only links with IEEE EUI-64 identifier or
+   * IEEE 48-bit MAC addresses */
+#if (UIP_LLADDR_LEN == 8)
+  memcpy(lladdr, ipaddr->u8 + 8, UIP_LLADDR_LEN);
+  lladdr->addr[0] ^= 0x02;
+#else
+#error uip-ds6.c cannot build interface address when UIP_LLADDR_LEN is not 8
+#endif
+}
+
+/*---------------------------------------------------------------------------*/
+void
+uip_ds6_set_addr_iid_(uip_ipaddr_t *ipaddr, uip_lladdr_t *lladdr)
+{
+  /* We consider only links with IEEE EUI-64 identifier or
+   * IEEE 48-bit MAC addresses */
+#if (UIP_LLADDR_LEN == 8)
+  memcpy(ipaddr->u8 + 8, lladdr, UIP_LLADDR_LEN);
+  ipaddr->u8[8] ^= 0x02;
+#else
+#error uip-ds6.c cannot build interface address when UIP_LLADDR_LEN is not 8
+#endif
+}
+
+/*---------------------------------------------------------------------------*/
+void
+uip_ds6_set_lladdr_from_iid(uip_lladdr_t *lladdr, uip_ipaddr_t *ipaddr)
+{
+  /* Use simple IPv6 addresses based on node-id instead of standard iid,
+   * enabling simpler logging and packet tracing. */
+  set_rimeaddr_from_iid(lladdr, (const rimeaddr_t *)ipaddr);
+}
+
+/*---------------------------------------------------------------------------*/
+void
 uip_ds6_set_addr_iid(uip_ipaddr_t *ipaddr, uip_lladdr_t *lladdr)
 {
   /* Use simple IPv6 addresses based on node-id instead of standard iid,

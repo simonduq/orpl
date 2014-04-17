@@ -38,13 +38,13 @@
  *         Simon Duquennoy <simonduq@sics.se>
  */
 
-#include "cooja-debug.h"
 #include "orpl.h"
 #include "orpl-routing-set.h"
 #include "orpl-anycast.h"
 #include "net/packetbuf.h"
 #include "cc2420-softack.h"
 #include "net/mac/frame802154.h"
+#include "dev/leds.h"
 #include <string.h>
 
 #if WITH_ORPL
