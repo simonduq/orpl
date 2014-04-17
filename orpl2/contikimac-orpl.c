@@ -1022,7 +1022,7 @@ input_packet(void)
   }
 
   if(packetbuf_datalen() > 0) {
-    struct anycast_parsing_info ret = orpl_anycast_parse_802154_frame(packetbuf_dataptr(), packetbuf_datalen(), 1);
+    struct anycast_parsing_info ret = orpl_anycast_802154_frame_parse(packetbuf_dataptr(), packetbuf_datalen());
 
     packetbuf_set_attr(PACKETBUF_ATTR_ORPL_DIRECTION, ret.direction);
 
