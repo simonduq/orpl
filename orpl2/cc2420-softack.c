@@ -60,7 +60,7 @@
 #if WITH_ORPL
 
 volatile int need_flush;
-extern int contikimac_keep_radio_on;
+extern volatile uint8_t contikimac_keep_radio_on;
 
 #define WITH_SEND_CCA 1
 
