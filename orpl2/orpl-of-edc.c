@@ -221,7 +221,7 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
       uint16_t curr_id = rpl_get_parent_ipaddr(curr_p)->u8[sizeof(uip_ipaddr_t) - 1];
       rpl_rank_t tentative_edc;
 
-      PRINTF("ORPL: EDC -> node %3u rank: %5u ", curr_id, curr_p_rank);
+      PRINTF("ORPL: EDC -> node %3u rank: %5u ack %u/%u ", curr_id, curr_p_rank, curr_p_ackcount, orpl_broadcast_count);
 
       tentative_edc = add_to_forwarder_set(curr_p, curr_p_rank, curr_p_ackcount,
                 &curr_ackcount_sum, &curr_ackcount_edc_sum);

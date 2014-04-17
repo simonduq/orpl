@@ -226,8 +226,9 @@ orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
   /* We don't consider neighbors as reachable before we have send
    * at least 4 broadcasts to estimate link quality */
   if(ipaddr != NULL && orpl_broadcast_count >= 4) {
-    uint16_t bc_count = rpl_get_parent_bc_ackcount_default(
-        uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)&llipaddr), 0);
+    rpl_parent_t *p = rpl_get_parent(
+            uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)&llipaddr));
+    uint16_t bc_count = p == NULL ? 0 : p->bc_ackcount;
     return 100*bc_count/orpl_broadcast_count >= NEIGHBOR_PRR_THRESHOLD;
   } else {
     return 0;
@@ -415,11 +416,13 @@ orpl_trickle_callback(rpl_instance_t *instance)
 void
 orpl_broadcast_acked(const rimeaddr_t *receiver)
 {
-  uint16_t count = rpl_get_parent_bc_ackcount_default((uip_lladdr_t *)receiver, 0) + 1;
-  if(count > orpl_broadcast_count+1) {
-    count = orpl_broadcast_count+1;
+  rpl_parent_t *p = rpl_get_parent((uip_lladdr_t *)receiver);
+  if(p != NULL) {
+    p->bc_ackcount++;
+    if(p->bc_ackcount > orpl_broadcast_count+1) {
+      p->bc_ackcount = orpl_broadcast_count+1;
+    }
   }
-  rpl_set_parent_bc_ackcount((uip_lladdr_t *)receiver, count);
 }
 
 /* Callback function at the end of a every broadcast
