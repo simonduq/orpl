@@ -68,11 +68,7 @@
 #endif /* CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION */
 /* Two byte header added to allow recovery of padded short packets */
 /* Wireshark will not understand such packets at present */
-#ifdef CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER
-#define WITH_CONTIKIMAC_HEADER       CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER
-#else
 #define WITH_CONTIKIMAC_HEADER       1
-#endif
 /* More aggressive radio sleeping when channel is busy with other traffic */
 #ifndef WITH_FAST_SLEEP
 #define WITH_FAST_SLEEP              1
@@ -232,7 +228,7 @@ static int we_are_receiving_burst = 0;
 #ifdef CONTIKIMAC_CONF_SHORTEST_PACKET_SIZE
 #define SHORTEST_PACKET_SIZE  CONTIKIMAC_CONF_SHORTEST_PACKET_SIZE
 #else
-#define SHORTEST_PACKET_SIZE               43
+#define SHORTEST_PACKET_SIZE               125
 #endif
 
 
@@ -670,8 +666,6 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
 #ifdef NETSTACK_ENCRYPT
   NETSTACK_ENCRYPT();
 #endif /* NETSTACK_ENCRYPT */
-
-  transmit_len = packetbuf_totlen();
 
   NETSTACK_RADIO.prepare(packetbuf_hdrptr(), transmit_len);
 
