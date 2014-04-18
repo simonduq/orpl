@@ -68,7 +68,11 @@
 #endif /* CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION */
 /* Two byte header added to allow recovery of padded short packets */
 /* Wireshark will not understand such packets at present */
+#ifdef CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER
+#define WITH_CONTIKIMAC_HEADER       CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER
+#else
 #define WITH_CONTIKIMAC_HEADER       1
+#endif
 /* More aggressive radio sleeping when channel is busy with other traffic */
 #ifndef WITH_FAST_SLEEP
 #define WITH_FAST_SLEEP              1
