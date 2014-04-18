@@ -172,6 +172,18 @@ void orpl_set_curr_seqno(uint32_t seqno)
   current_seqno = seqno;
 }
 
+/*---------------------------------------------------------------------------*/
+void
+llipaddr_from_ipaddr(uip_lladdr_t *lladdr, uip_ipaddr_t *ipaddr)
+{
+#if (UIP_LLADDR_LEN == 8)
+  memcpy(lladdr, ipaddr->u8 + 8, UIP_LLADDR_LEN);
+  lladdr->addr[0] ^= 0x02;
+#else
+#error orpl.c supports only EUI-64 identifiers
+#endif
+}
+
 /* Build a global IPv6 address from a link-local IPv6 address */
 static void
 global_ipaddr_from_llipaddr(uip_ipaddr_t *gipaddr, const uip_ipaddr_t *llipaddr)
@@ -228,7 +240,7 @@ orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
    * at least 4 broadcasts to estimate link quality */
   if(ipaddr != NULL && orpl_broadcast_count >= 4) {
     llipaddr_from_global_ipaddr(&llipaddr, ipaddr);
-    uip_ds6_set_lladdr_from_iid(&lladdr, (uip_ipaddr_t *)&llipaddr);
+    llipaddr_from_ipaddr(&lladdr, (uip_ipaddr_t *)&llipaddr);
     rpl_parent_t *p = rpl_get_parent(&lladdr);
     uint16_t bc_count = p == NULL ? 0 : p->bc_ackcount;
     return 100*bc_count/orpl_broadcast_count >= NEIGHBOR_PRR_THRESHOLD;

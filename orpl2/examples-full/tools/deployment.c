@@ -110,7 +110,9 @@ node_id_from_rimeaddr(const rimeaddr_t *addr)
 uint16_t
 node_id_from_ipaddr(const uip_ipaddr_t *addr)
 {
-  return (addr->u8[14] << 8) + addr->u8[15];
+  uip_lladdr_t lladdr;
+  llipaddr_from_ipaddr(&lladdr, addr);
+  return node_id_from_rimeaddr(&lladdr);
 }
 
 /* Returns a node-id from a node's absolute index in the deployment */
@@ -124,20 +126,17 @@ get_node_id_from_index(uint16_t index)
 #endif
 }
 
-/* Sets a rimeaddr from an IPv6 */
+/* Sets an IPv6 from a node-id */
 void
-set_rimeaddr_from_iid(rimeaddr_t *lladdr, const uip_ipaddr_t *ipaddr)
+set_ipaddr_from_id(uip_ipaddr_t *ipaddr, uint16_t id)
 {
-  set_rimeaddr_from_id(lladdr, node_id_from_ipaddr(ipaddr));
+  rimeaddr_t lladdr;
+  memcpy(ipaddr, &prefix, 8);
+  set_rimeaddr_from_id(&lladdr, id);
+  uip_ds6_set_addr_iid(ipaddr, &lladdr);
 }
 
-/* Sets the IID of an IPv6 from a link-layer address */
-void
-set_iid_from_rimeaddr(uip_ipaddr_t *ipaddr, const rimeaddr_t *lladdr)
-{
-  set_iid_from_id(ipaddr, node_id_from_rimeaddr(lladdr));
-}
-
+/* Sets an rimeaddr from a link-layer address */
 /* Sets a rimeaddr from a node-id */
 void
 set_rimeaddr_from_id(rimeaddr_t *lladdr, uint16_t id)
@@ -154,28 +153,6 @@ set_rimeaddr_from_id(rimeaddr_t *lladdr, uint16_t id)
 #else
 #error NYI
 #endif
-}
-
-/* Sets the IID of an IPv6 from a node-id */
-void
-set_iid_from_id(uip_ipaddr_t *ipaddr, uint16_t id)
-{
-  ipaddr->u8[8] = ipaddr->u8[10] = ipaddr->u8[12] = ipaddr->u8[14] = id >> 8;
-  ipaddr->u8[9] = ipaddr->u8[11] = ipaddr->u8[13] = ipaddr->u8[15] = id;
-}
-
-/* Sets an IPv6 from a link-layer address */
-void
-set_ipaddr_from_rimeaddr(uip_ipaddr_t *ipaddr, const rimeaddr_t *lladdr) {
-  set_ipaddr_from_id(ipaddr, node_id_from_rimeaddr((const rimeaddr_t*)lladdr));
-}
-
-/* Sets an IPv6 from a node-id */
-void
-set_ipaddr_from_id(uip_ipaddr_t *ipaddr, uint16_t id)
-{
-  memcpy(ipaddr, &prefix, 8);
-  set_iid_from_id(ipaddr, id);
 }
 
 /* Initializes global IPv6 and creates DODAG */
