@@ -100,8 +100,6 @@ int orpl_is_root();
 rpl_rank_t orpl_current_edc();
 /* Returns 1 if addr is the global ip of a reachable neighbor */
 int orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr);
-/* Returns 1 if addr is the global ip of a reachable child */
-int orpl_is_reachable_child(const uip_ipaddr_t *ipaddr);
 /* Insert a packet sequence number to the blacklist
  * (used for false positive recovery) */
 void orpl_blacklist_insert(uint32_t seqno);

@@ -174,7 +174,7 @@ void orpl_set_curr_seqno(uint32_t seqno)
 
 /*---------------------------------------------------------------------------*/
 void
-lladdr_from_ipaddr(uip_lladdr_t *lladdr, uip_ipaddr_t *ipaddr)
+lladdr_from_ipaddr_uuid(uip_lladdr_t *lladdr, const uip_ipaddr_t *ipaddr)
 {
 #if (UIP_LLADDR_LEN == 8)
   memcpy(lladdr, ipaddr->u8 + 8, UIP_LLADDR_LEN);
@@ -191,14 +191,6 @@ global_ipaddr_from_llipaddr(uip_ipaddr_t *gipaddr, const uip_ipaddr_t *llipaddr)
   uip_ip6addr(gipaddr, 0, 0, 0, 0, 0, 0, 0, 0);
   memcpy(gipaddr, &global_ipv6, 8);
   memcpy(gipaddr->u8+8, llipaddr->u8+8, 8);
-}
-
-/* Build a local IPv6 address from a link-local IPv6 address */
-static void
-llipaddr_from_global_ipaddr(uip_ipaddr_t *llipaddr, const uip_ipaddr_t *gipaddr)
-{
-  uip_ip6addr(llipaddr, 0xfe80, 0, 0, 0, 0, 0, 0, 0);
-  memcpy(llipaddr->u8+8, gipaddr->u8+8, 8);
 }
 
 /* Returns 1 if EDC is frozen, i.e. we are not allowed to change edc */
@@ -230,18 +222,14 @@ orpl_current_edc()
   return dag == NULL ? 0xffff : dag->rank;
 }
 
-/* Returns 1 if addr is the global ip of a reachable neighbor */
-int
-orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
+/* Returns 1 if addr is link-layer address of a reachable neighbor */
+static int
+orpl_is_reachable_neighbor_from_lladdr(const uip_lladdr_t *lladdr)
 {
-  uip_ipaddr_t llipaddr;
-  uip_lladdr_t lladdr;
   /* We don't consider neighbors as reachable before we have send
    * at least 4 broadcasts to estimate link quality */
-  if(ipaddr != NULL && orpl_broadcast_count >= 4) {
-    llipaddr_from_global_ipaddr(&llipaddr, ipaddr);
-    lladdr_from_ipaddr(&lladdr, (uip_ipaddr_t *)&llipaddr);
-    rpl_parent_t *p = rpl_get_parent(&lladdr);
+  if(lladdr != NULL && orpl_broadcast_count >= 4) {
+    rpl_parent_t *p = rpl_get_parent(lladdr);
     uint16_t bc_count = p == NULL ? 0 : p->bc_ackcount;
     return 100*bc_count/orpl_broadcast_count >= NEIGHBOR_PRR_THRESHOLD;
   } else {
@@ -249,16 +237,29 @@ orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
   }
 }
 
-/* Returns 1 if addr is the global ip of a reachable child */
+/* Returns 1 if addr is the global ip of a reachable neighbor */
 int
+orpl_is_reachable_neighbor(const uip_ipaddr_t *ipaddr)
+{
+  uip_lladdr_t lladdr;
+  lladdr_from_ipaddr_uuid(&lladdr, ipaddr);
+  return orpl_is_reachable_neighbor_from_lladdr(&lladdr);
+}
+
+/* Returns 1 if addr is the global ip of a reachable child */
+static int
 orpl_is_reachable_child(const uip_ipaddr_t *ipaddr)
 {
-  rpl_rank_t curr_edc = orpl_current_edc();
-  uip_ipaddr_t llipaddr;
-  llipaddr_from_global_ipaddr(&llipaddr, ipaddr);
-  rpl_rank_t neighbor_edc = rpl_get_parent_rank(uip_ds6_nbr_lladdr_from_ipaddr((uip_ipaddr_t *)&llipaddr));
-  return ipaddr && orpl_is_reachable_neighbor(ipaddr) &&
-      neighbor_edc > ORPL_EDC_W && (neighbor_edc - ORPL_EDC_W) > curr_edc;
+  if(ipaddr) {
+    uip_lladdr_t lladdr;
+    lladdr_from_ipaddr_uuid(&lladdr, ipaddr);
+    if(orpl_is_reachable_neighbor_from_lladdr(&lladdr)) {
+      rpl_rank_t curr_edc = orpl_current_edc();
+      rpl_rank_t neighbor_edc = rpl_get_parent_rank(&lladdr);
+      return neighbor_edc > ORPL_EDC_W && (neighbor_edc - ORPL_EDC_W) > curr_edc;
+    }
+  }
+  return 0;
 }
 
 /* Insert a packet sequence number to the blacklist
