@@ -658,7 +658,6 @@ cc2420_interrupt(void)
   int do_ack;
   int frame_valid = 0;
   struct received_frame_s *rf;
-  struct received_frame_s *last_rf;
 
   process_poll(&cc2420_process);
 
@@ -769,9 +768,6 @@ cc2420_interrupt(void)
     if(softack_acked_callback) {
       softack_acked_callback(rf->buf, len_a);
     }
-    last_rf = rf;
-  } else {
-    last_rf = NULL;
   }
 
   if(rf && frame_valid && len_b>0) { /* Get rest of the data.

@@ -41,6 +41,7 @@
 #include "net/rpl/rpl.h"
 #include "random.h"
 #include "ds2411.h"
+#include "orpl.h"
 #include <string.h>
 
 /* Our global IPv6 prefix */
@@ -93,11 +94,13 @@ node_id_from_rimeaddr(const rimeaddr_t *addr)
   if(addr == NULL) return 0;
   else return addr->u8[7];
 #else /* IN_COOJA */
-  if(addr == NULL) return 0;
-  uint16_t mymac = addr->u8[7] << 8 | addr->u8[6];
+  if(addr == NULL) {
+    return 0;
+  }
   const struct id_mac *curr = id_mac_list;
   while(curr->mac != 0) {
-    if(curr->mac == mymac) {
+    // TODO
+    if(rimeaddr_cmp(curr->mac,addr)) {
       return curr->id;
     }
     curr++;
@@ -111,8 +114,8 @@ uint16_t
 node_id_from_ipaddr(const uip_ipaddr_t *addr)
 {
   uip_lladdr_t lladdr;
-  llipaddr_from_ipaddr(&lladdr, addr);
-  return node_id_from_rimeaddr(&lladdr);
+  lladdr_from_ipaddr_uuid(&lladdr, addr);
+  return node_id_from_rimeaddr((const rimeaddr_t *)&lladdr);
 }
 
 /* Returns a node-id from a node's absolute index in the deployment */
@@ -133,7 +136,7 @@ set_ipaddr_from_id(uip_ipaddr_t *ipaddr, uint16_t id)
   rimeaddr_t lladdr;
   memcpy(ipaddr, &prefix, 8);
   set_rimeaddr_from_id(&lladdr, id);
-  uip_ds6_set_addr_iid(ipaddr, &lladdr);
+  uip_ds6_set_addr_iid(ipaddr, (uip_lladdr_t*)&lladdr);
 }
 
 /* Sets an rimeaddr from a link-layer address */

@@ -174,7 +174,6 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
   uint16_t curr_p_ackcount = 0xffff;
 
   int prev_index = -1;
-  rpl_parent_t *prev_min = NULL;
   uint16_t prev_min_rank = 0;
 
   if(orpl_is_edc_frozen()) {
@@ -241,7 +240,6 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
         ANNOTATE("#L %u 0\n", curr_id);
       }
       prev_index = curr_index;
-      prev_min = curr_p;
       prev_min_rank = curr_p_rank;
     }
   } while(curr_p != NULL);

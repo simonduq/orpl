@@ -106,13 +106,13 @@ rpl_get_parent_rank(uip_lladdr_t *addr)
 #if WITH_ORPL
 /*---------------------------------------------------------------------------*/
 rpl_parent_t *
-rpl_get_parent(uip_lladdr_t *addr)
+rpl_get_parent(const uip_lladdr_t *addr)
 {
   return nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
 }
 /*---------------------------------------------------------------------------*/
 void
-rpl_set_parent_rank(uip_lladdr_t *addr, rpl_rank_t rank)
+rpl_set_parent_rank(const uip_lladdr_t *addr, rpl_rank_t rank)
 {
   rpl_parent_t *p = nbr_table_get_from_lladdr(rpl_parents, (rimeaddr_t *)addr);
   if(p != NULL) {

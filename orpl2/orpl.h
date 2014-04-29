@@ -90,6 +90,8 @@ uint32_t orpl_packetbuf_seqno();
 void orpl_set_curr_seqno(uint32_t seqno);
 /* Get the current ORPL sequence number */
 uint32_t orpl_get_curr_seqno();
+/* Build a global link-layer address from an IPv6 based on its UUID64 */
+void lladdr_from_ipaddr_uuid(uip_lladdr_t *lladdr, const uip_ipaddr_t *ipaddr);
 /* Returns 1 if EDC is frozen, i.e. we are not allowed to change edc */
 int orpl_is_edc_frozen();
 /* Returns 1 routing sets are active, i.e. we can start inserting and merging */

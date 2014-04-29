@@ -255,8 +255,8 @@ rpl_rank_t rpl_get_parent_rank(uip_lladdr_t *addr);
 uint16_t rpl_get_parent_link_metric(uip_lladdr_t *addr);
 void rpl_dag_init(void);
 #if WITH_ORPL
-rpl_parent_t *rpl_get_parent(uip_lladdr_t *addr);
-void rpl_set_parent_rank(uip_lladdr_t *addr, rpl_rank_t rank);
+rpl_parent_t *rpl_get_parent(const uip_lladdr_t *addr);
+void rpl_set_parent_rank(const uip_lladdr_t *addr, rpl_rank_t rank);
 #endif /* WITH_ORPL */
 /*---------------------------------------------------------------------------*/
 #endif /* RPL_H */
