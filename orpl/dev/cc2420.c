@@ -58,7 +58,7 @@
 #include "sys/timetable.h"
 
 volatile int need_flush;
-extern int contikimac_keep_radio_on;
+extern volatile uint8_t contikimac_keep_radio_on;
 
 #define RSSI_THR -14
 
