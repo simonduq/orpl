@@ -233,7 +233,15 @@ int test_prr(uint16_t count, uint16_t threshold) {
 
 void
 received_noip() {
+  if(packetbuf_totlen() != sizeof(bloom_broadcast)) {
+    printf("Bloom: received with wrong len\n");
+    return;
+  }
   packetbuf_copyto(&bloom_broadcast);
+  if(bloom_broadcast.magic != BLOOM_MAGIC) {
+    printf("Bloom: received with wrong magic number\n");
+    return;
+  }
   bloom_received(&bloom_broadcast);
 }
 
@@ -252,11 +260,6 @@ received_noip() {
 void
 bloom_received(struct bloom_broadcast_s *data)
 {
-  if(data->magic != BLOOM_MAGIC) {
-    printf("Bloom received with wrong magic number\n");
-    return;
-  }
-
   uint16_t neighbor_id = node_id_from_rimeaddr(packetbuf_addr(PACKETBUF_ADDR_SENDER));
   if(neighbor_id == 0) {
     return;
