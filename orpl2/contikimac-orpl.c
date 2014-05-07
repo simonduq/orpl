@@ -1151,6 +1151,7 @@ input_packet(void)
           received_app_seqnos[0].seqno = seqno;
         }
 
+        ORPL_LOG_INC_HOPCOUNT_FROM_PACKETBUF();
         ORPL_LOG_FROM_PACKETBUF("Cmac: input from %d",
             ORPL_LOG_NODEID_FROM_RIMEADDR(packetbuf_addr(PACKETBUF_ADDR_SENDER))
         );
