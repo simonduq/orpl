@@ -151,7 +151,7 @@ neighbor_link_callback(rpl_parent_t *parent, int known, int edc)
 
     PRINTF("ORPL: updated hbh_edc %u -> %u (%u %u)\n", hbh_edc_prev, hbh_edc, curr_hbh_edc, weighted_curr_hbh_edc);
 
-    /* Calculate EDC and update rank*/
+    /* Calculate EDC and update rank */
     if(parent && parent->dag) {
       parent->dag->rank = calculate_rank(parent, 0);
     }
@@ -167,7 +167,7 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
   uint32_t curr_ackcount_sum = 0;
   /* Counts the total number of EDC*ACKs received from nodes in the current set */
   uint32_t curr_ackcount_edc_sum = 0;
-  /* Variables used for looping over parents and building the forwarder set*/
+  /* Variables used for looping over parents and building the forwarder set */
   rpl_parent_t *p, *curr_p;
   int index = 0, curr_index = 0;
   uint16_t curr_p_rank = 0xffff;
