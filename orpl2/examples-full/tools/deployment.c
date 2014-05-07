@@ -225,7 +225,7 @@ set_ipaddr_from_id(uip_ipaddr_t *ipaddr, uint16_t id)
 void
 set_rimeaddr_from_id(rimeaddr_t *lladdr, uint16_t id)
 {
-#if 0 && IN_COOJA
+#if IN_COOJA
   lladdr->u8[0] = 0x00;
   lladdr->u8[1] = 0x12;
   lladdr->u8[2] = 0x74;
