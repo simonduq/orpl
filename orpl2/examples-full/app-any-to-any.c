@@ -140,8 +140,10 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 
   if(node_id == 0) {
     NETSTACK_RDC.off(0);
-    uint16_t mymac = rimeaddr_node_addr.u8[7] << 8 | rimeaddr_node_addr.u8[6];
-    printf("Node id unset, my mac is 0x%04x\n", mymac);
+    printf("Node id unset, my mac is ");
+    uip_debug_lladdr_print(&rimeaddr_node_addr);
+    printf("\n");
+    while(1);
     PROCESS_EXIT();
   }
 
