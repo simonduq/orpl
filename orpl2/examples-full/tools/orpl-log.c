@@ -77,7 +77,7 @@ void
 log_appdataptr(struct app_data *dataptr)
 {
   struct app_data data;
-  int curr_dio_interval = default_instance->dio_intcurrent;
+  int curr_dio_interval = default_instance != NULL ? default_instance->dio_intcurrent : 0;
 
   if(dataptr) {
     appdata_copy(&data, dataptr);
