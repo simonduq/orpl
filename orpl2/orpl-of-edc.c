@@ -39,7 +39,7 @@
 
 #include "net/rpl/rpl-private.h"
 
-#define DEBUG DEBUG_ANNOTATE
+#define DEBUG DEBUG_NONE
 #include "net/uip-debug.h"
 #include "orpl.h"
 #include "orpl-anycast.h"

@@ -50,7 +50,7 @@
 
 #if WITH_ORPL
 
-#define DEBUG DEBUG_ANNOTATE
+#define DEBUG DEBUG_NONE
 #include "net/uip-debug.h"
 
 /* The global IPv6 address in use */
