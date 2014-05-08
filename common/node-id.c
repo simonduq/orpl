@@ -143,7 +143,7 @@ uint16_t get_node_id(uint16_t index) {
 
 uint16_t get_random_id() {
 #if IN_COOJA
-  return 1 + ((uint16_t)random_rand()) % N_NODES;
+  return 1 + ((uint16_t)(random_rand()>>8)) % N_NODES;
 #else
   uint16_t id_count = (sizeof(id_mac_list)/sizeof(struct id_mac))-1;
   return id_mac_list[((uint16_t)random_rand()) % id_count].id;
