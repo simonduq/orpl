@@ -92,7 +92,9 @@ add_to_forwarder_set(rpl_parent_t *curr_p, rpl_rank_t curr_p_rank, uint16_t ackc
 
   total_tx_count = orpl_broadcast_count;
   if(total_tx_count == 0) {
-    total_tx_count = 1;
+    /* No broadcast sent yet: assume a reception rate of 50% */
+    ackcount = 1;
+    total_tx_count = 2;
   }
 
   *curr_ackcount_sum += ackcount;
@@ -204,7 +206,7 @@ calculate_rank(rpl_parent_t *parent, rpl_rank_t base_rank)
       uint16_t ackcount = p->bc_ackcount;
 
       if(rank != 0xffff
-          && ackcount != 0
+          && !(orpl_broadcast_count > 0 && ackcount == 0)
           && (curr_p == NULL || rank < curr_p_rank)
           && (rank > prev_min_rank || (rank == prev_min_rank && index > prev_index))
       ) {
