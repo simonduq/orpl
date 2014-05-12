@@ -77,8 +77,8 @@ uint32_t orpl_broadcast_count = 0;
 #endif
 
 #if FREEZE_TOPOLOGY
-#define UPDATE_EDC_MAX_TIME 4*60
-#define UPDATE_ROUTING_SET_MIN_TIME 5*60
+#define UPDATE_EDC_MAX_TIME 1*60
+#define UPDATE_ROUTING_SET_MIN_TIME 2*60
 #else
 #define UPDATE_EDC_MAX_TIME 0
 #define UPDATE_ROUTING_SET_MIN_TIME 0
@@ -293,7 +293,8 @@ orpl_blacklist_contains(uint32_t seqno)
 void
 orpl_acked_down_insert(uint32_t seqno, const rimeaddr_t *child)
 {
-  ORPL_LOG("ORPL: inserted ack down %lx\n", seqno);
+  ORPL_LOG("ORPL: inserted ack down %lx %u\n", seqno,
+      ORPL_LOG_NODEID_FROM_RIMEADDR(child));
   int i;
   for(i = ACKED_DOWN_SIZE - 1; i > 0; --i) {
     acked_down[i] = acked_down[i - 1];
@@ -385,7 +386,8 @@ udp_received_routing_set(struct simple_udp_connection *c,
     if(is_reachable_child || ORPL_ALL_NEIGHBORS_IN_ROUTING_SET) {
       /* Insert the neighbor in our routing set */
       orpl_routing_set_insert(&sender_global_ipaddr);
-      ORPL_LOG("ORPL: inserting neighbor into routing set: ");
+      ORPL_LOG("ORPL: inserting neighbor into routing set: %u ",
+          ORPL_LOG_NODEID_FROM_IPADDR(&sender_global_ipaddr));
       ORPL_LOG_IPADDR(&sender_global_ipaddr);
       ORPL_LOG("\n");
     }
@@ -393,7 +395,8 @@ udp_received_routing_set(struct simple_udp_connection *c,
     if(is_reachable_child) {
       /* The neighbor is a child, merge its routing set in ours */
       orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->rs);
-      ORPL_LOG("ORPL: merging routing set from: ");
+      ORPL_LOG("ORPL: merging routing set from: %u ",
+          ORPL_LOG_NODEID_FROM_IPADDR(&sender_global_ipaddr));
       ORPL_LOG_IPADDR(&sender_global_ipaddr);
       ORPL_LOG("\n");
     }
@@ -461,7 +464,8 @@ orpl_broadcast_done()
 
       if(orpl_is_reachable_child(&nbr_global_ipaddr)) {
         orpl_routing_set_insert(&nbr_global_ipaddr);
-        ORPL_LOG("ORPL: inserting neighbor into routing set: ");
+        ORPL_LOG("ORPL: inserting neighbor into routing set: %u ",
+            ORPL_LOG_NODEID_FROM_IPADDR(&nbr_global_ipaddr));
         ORPL_LOG_IPADDR(&nbr_global_ipaddr);
         ORPL_LOG("\n");
       }

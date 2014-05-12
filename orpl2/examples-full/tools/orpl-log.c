@@ -105,3 +105,10 @@ log_node_id_from_rimeaddr(const void *rimeaddr)
 {
   return node_id_from_rimeaddr((const rimeaddr_t *)rimeaddr);
 }
+
+/* Return node id from its IP address */
+uint16_t
+log_node_id_from_ipaddr(const void *ipaddr)
+{
+  return node_id_from_ipaddr((const uip_ipaddr_t *)ipaddr);
+}

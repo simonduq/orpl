@@ -63,7 +63,7 @@ static int active_index;
 static uint64_t
 get_hash(const uip_ipaddr_t *ipv6)
 {
-  return node_id_from_ipaddr(ipv6);
+  return ORPL_LOG_NODEID_FROM_IPADDR(ipv6);
 }
 
 #elif ORPL_RS_TYPE == ORPL_RS_TYPE_BLOOM_SAX
