@@ -14,3 +14,7 @@ PROJECT_SOURCEFILES += deployment.c simple-energest.c orpl-log.c
 all: $(CONTIKI_PROJECT)
 
 include $(ORPL)/Makefile.include
+
+%.exe: %.sky
+	cp $< $@
+	
