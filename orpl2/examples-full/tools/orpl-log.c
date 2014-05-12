@@ -118,19 +118,19 @@ log_node_id_from_ipaddr(const void *ipaddr)
 void
 orpl_log_print_routing_set()
 {
-  printf("Routing set: bits set %d/%d\n", orpl_routing_set_count_bits(), ROUTING_SET_M);
-  printf("Routing set: start\n");
+  printf("Routing set dump: bits set %d/%d\n", orpl_routing_set_count_bits(), ROUTING_SET_M);
+  printf("Routing set dump: start\n");
   int i;
   for(i=0; i<ROUTING_SET_M/8; i++) {
     if(i%16 == 0) {
-      printf("Routing set: [%2u] ", i/16);
+      printf("Routing set dump: [%2u] ", i/16);
     }
     printf("%02x ", orpl_routing_set_get_active()->u8[i]);
     if(i%16 == 15) {
       printf("\n");
     }
   }
-  printf("\nRouting set: end\n");
+  printf("\nRouting set dump: end\n");
 
   int count = 0;
   int print_header = 1;
