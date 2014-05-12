@@ -187,23 +187,4 @@ orpl_routing_set_count_bits()
   return cnt;
 }
 
-/* Prints out the content of the active routing set */
-void
-orpl_routing_set_print()
-{
-  printf("Routing set: bits set %d/%d\n", orpl_routing_set_count_bits(), ROUTING_SET_M);
-  printf("Routing set: start\n");
-  int i;
-  for(i=0; i<ROUTING_SET_M/8; i++) {
-    if(i%16 == 0) {
-      printf("Routing set: [%2u] ", i/16);
-    }
-    printf("%02x ", orpl_routing_set_get_active()->u8[i]);
-    if(i%16 == 15) {
-      printf("\n");
-    }
-  }
-  printf("\nRouting set: end\n");
-}
-
 #endif /* WITH_ORPL */

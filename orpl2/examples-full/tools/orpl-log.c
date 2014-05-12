@@ -36,6 +36,7 @@
 
 #include "contiki.h"
 #include "orpl.h"
+#include "orpl-routing-set.h"
 #include "deployment.h"
 #include "net/rpl/rpl.h"
 #include "net/rpl/rpl-private.h"
@@ -111,4 +112,46 @@ uint16_t
 log_node_id_from_ipaddr(const void *ipaddr)
 {
   return node_id_from_ipaddr((const uip_ipaddr_t *)ipaddr);
+}
+
+/* Prints out the content of the active routing set */
+void
+orpl_log_print_routing_set()
+{
+  printf("Routing set: bits set %d/%d\n", orpl_routing_set_count_bits(), ROUTING_SET_M);
+  printf("Routing set: start\n");
+  int i;
+  for(i=0; i<ROUTING_SET_M/8; i++) {
+    if(i%16 == 0) {
+      printf("Routing set: [%2u] ", i/16);
+    }
+    printf("%02x ", orpl_routing_set_get_active()->u8[i]);
+    if(i%16 == 15) {
+      printf("\n");
+    }
+  }
+  printf("\nRouting set: end\n");
+
+  int count = 0;
+  int print_header = 1;
+  printf("Routing set list: start\n");
+  for(i=0; i<get_n_nodes(); i++) {
+    if(print_header) {
+      printf("Routing set list: [%2u]", count/8);
+      print_header = 0;
+    }
+    uip_ipaddr_t dest_ipaddr;
+    uint16_t id = get_node_id_from_index(i);
+    set_ipaddr_from_id(&dest_ipaddr, id);
+    int contained = orpl_routing_set_contains(&dest_ipaddr);
+    if(contained) {
+      count+=1;
+      printf("%3u, ", id);
+      if(count%8 == 0) {
+        printf("\n");
+        print_header = 1;
+      }
+    }
+  }
+  printf("\nRouting set list: end (%u nodes)\n",count);
 }

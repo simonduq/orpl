@@ -99,8 +99,6 @@ int orpl_routing_set_contains(const uip_ipaddr_t *ipv6);
 void orpl_routing_set_swap();
 /* Returns the number of bits set in the active routing set */
 int orpl_routing_set_count_bits();
-/* Prints out the content of the active routing set */
-void orpl_routing_set_print();
 
 #endif /* __orpl_routing_set_H__ */
 

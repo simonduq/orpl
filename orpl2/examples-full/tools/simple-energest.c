@@ -97,6 +97,6 @@ void simple_energest_step() {
   );
 
   if(cnt % 8 == 0) {
-    orpl_routing_set_print();
+    orpl_log_print_routing_set();
   }
 }
