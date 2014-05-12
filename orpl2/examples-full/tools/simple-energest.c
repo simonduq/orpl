@@ -96,6 +96,8 @@ void simple_energest_step() {
       fraction
   );
 
+  orpl_calculate_edc(1);
+
   if(cnt % 8 == 0) {
     orpl_log_print_routing_set();
   }
