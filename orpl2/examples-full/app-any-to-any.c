@@ -143,7 +143,6 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
     printf("Node id unset, my mac is ");
     uip_debug_lladdr_print(&rimeaddr_node_addr);
     printf("\n");
-    while(1);
     PROCESS_EXIT();
   }
 
