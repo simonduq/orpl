@@ -181,7 +181,8 @@ node_id_from_rimeaddr(const rimeaddr_t *addr)
   }
   const struct id_mac *curr = id_mac_list;
   while(curr->id != 0) {
-    if(rimeaddr_cmp(&curr->mac, addr)) {
+    /* Assume network-wide unique 16-bit MAC addresses */
+    if(curr->mac.u8[6] == addr->u8[6] && curr->mac.u8[7] == addr->u8[7]) {
       return curr->id;
     }
     curr++;
