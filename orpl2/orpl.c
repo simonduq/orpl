@@ -85,7 +85,7 @@ uint32_t orpl_broadcast_count = 0;
 #endif
 
 /* PRR threshold for considering a neighbor as usable */
-#define NEIGHBOR_PRR_THRESHOLD 35
+#define NEIGHBOR_PRR_THRESHOLD 50
 
 /* Rank changes of more than RANK_MAX_CHANGE trigger a trickle timer reset */
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)
