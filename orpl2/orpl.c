@@ -108,7 +108,7 @@ static uip_ipaddr_t routing_set_addr;
 struct routing_set_broadcast_s {
   uint16_t edc;
   union {
-    routing_set rs;
+    struct routing_set_s rs;
     uint8_t padding[64];
   };
 };
@@ -339,7 +339,7 @@ broadcast_routing_set(void *ptr)
     /* Build data structure to be broadcasted */
     last_broadcasted_edc = curr_edc;
     routing_set_broadcast.edc = curr_edc;
-    memcpy(routing_set_broadcast.rs, *orpl_routing_set_get_active(), sizeof(routing_set));
+    memcpy(&routing_set_broadcast.rs, orpl_routing_set_get_active(), sizeof(struct routing_set_s));
 
     /* Proceed to UDP transmission */
     sending_routing_set = 1;
@@ -394,7 +394,8 @@ udp_received_routing_set(struct simple_udp_connection *c,
 
     if(is_reachable_child) {
       /* The neighbor is a child, merge its routing set in ours */
-      orpl_routing_set_merge(((struct routing_set_broadcast_s*)data)->rs);
+      orpl_routing_set_merge((const struct routing_set_s *)
+          &((struct routing_set_broadcast_s*)data)->rs);
       ORPL_LOG("ORPL: merging routing set from: %u ",
           ORPL_LOG_NODEID_FROM_IPADDR(&sender_global_ipaddr));
       ORPL_LOG_IPADDR(&sender_global_ipaddr);
