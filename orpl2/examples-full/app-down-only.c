@@ -152,11 +152,12 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
       PROCESS_WAIT_UNTIL(etimer_expired(&send_timer));
 
       if(check_reachable_count()) {
+        uip_ipaddr_t dest_ipaddr;
         static uint16_t target_id;
         static uint16_t i;
         do {
           target_id = get_node_id_from_index((random_rand()>>8)%get_n_nodes());
-          set_ipaddr_from_id(&dest_ipaddr, id);
+          set_ipaddr_from_id(&dest_ipaddr, target_id);
         } while (target_id == ROOT_ID || !orpl_routing_set_contains(&dest_ipaddr));
         app_send_to(target_id);
       }
