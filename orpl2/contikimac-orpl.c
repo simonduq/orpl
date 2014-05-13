@@ -846,7 +846,9 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
             memcpy(&dest, ackbuf+3, 8);
             uint16_t neighbor_rank = (ackbuf[3+8+1]<<8) + ackbuf[3+8];
             rpl_set_parent_rank((uip_lladdr_t *)&dest, neighbor_rank);
-            if(got_strobe_ack >= 1) break;
+            if(got_strobe_ack >= 1) {
+              break;
+            }
           }
         }
       }

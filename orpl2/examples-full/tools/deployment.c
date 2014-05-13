@@ -173,8 +173,11 @@ uint16_t
 node_id_from_rimeaddr(const rimeaddr_t *addr)
 {
 #if IN_COOJA
-  if(addr == NULL) return 0;
-  else return addr->u8[7];
+  if(addr == NULL) {
+    return 0;
+  } else {
+    return addr->u8[7];
+  }
 #else /* IN_COOJA */
   if(addr == NULL) {
     return 0;
