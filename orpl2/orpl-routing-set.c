@@ -76,11 +76,16 @@ get_hash(const uip_ipaddr_t *ipv6)
 {
   int i;
   uint64_t hash;
-  memcpy(&hash, ipv6->u8+8, 8); /* Initialize our hash with the IPv6 IID
+  for(i=0; i<8; i++) {
+    ((unsigned char*)&hash)[i] = ipv6->u8[14+i%2];
+  }
+  /* Initialize our hash using (the last bytes) of the IID
   rather than 0 for increased entropy (when initialized with 0 and hashing
   entries of only 16 bytes, SAX produces comparatively many collisions) */
   for(i=0; i<16; i++) {
-    hash ^= ( hash << 5 ) + ( hash >> 2 ) + ipv6->u8[i];
+    /* Use only the IID, not the prefix, and loop twice over it as
+     * only 8 iterations result in too little entropy with SAX */
+    hash ^= ( hash << 5 ) + ( hash >> 2 ) + ipv6->u8[8+i%8];
   }
   return hash;
 }
