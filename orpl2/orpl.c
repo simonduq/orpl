@@ -405,7 +405,6 @@ udp_received_routing_set(struct simple_udp_connection *c,
     /* Broadcast our routing set again if it has changed */
     bit_count_after = orpl_routing_set_count_bits();
     if(curr_instance && bit_count_after != bit_count_before) {
-      ORPL_LOG("ORPL: reset DIO timer (routing set received)\n");
       request_routing_set_broadcast();
     }
   }

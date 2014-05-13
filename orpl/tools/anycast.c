@@ -292,7 +292,7 @@ bloom_received(struct bloom_broadcast_s *data)
     int bit_count_after = bloom_count_bits(&dbf);
     printf("Bloom: merging filter from %u (%u<%u, %u/%lu, %u->%u)\n", neighbor_id, rank, neighbor_rank, count, broadcast_count, bit_count_before, bit_count_after);
     if(curr_instance && bit_count_after != bit_count_before) {
-      printf("Anycast: reset DIO timer (bloom received)\n");
+      //printf("Anycast: reset DIO timer (bloom received)\n");
 //      bit_count_last = bit_count_after;
       //      rpl_reset_dio_timer(curr_instance);
       bloom_request_broadcast();
