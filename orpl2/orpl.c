@@ -418,9 +418,11 @@ orpl_trickle_callback(rpl_instance_t *instance)
   curr_instance = instance;
 
   if(orpl_are_routing_set_active()) {
+#if !FREEZE_TOPOLOGY
     /* Swap routing sets to implement ageing */
     ORPL_LOG("ORPL: swapping routing sets\n");
     orpl_routing_set_swap();
+#endif /* FREEZE_TOPOLOGY */
 
     /* Request transmission of routing set */
     request_routing_set_broadcast();
