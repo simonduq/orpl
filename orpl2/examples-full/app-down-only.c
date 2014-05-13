@@ -155,10 +155,9 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
         static uint16_t target_id;
         static uint16_t i;
         do {
-          //target_id = get_node_id_from_index(i++);
-          //i %= get_n_nodes();
           target_id = get_node_id_from_index((random_rand()>>8)%get_n_nodes());
-        } while (target_id == ROOT_ID);
+          set_ipaddr_from_id(&dest_ipaddr, id);
+        } while (target_id == ROOT_ID || !orpl_routing_set_contains(&dest_ipaddr));
         app_send_to(target_id);
       }
 
