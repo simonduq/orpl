@@ -777,7 +777,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
 #endif
 
   uint8_t ackbuf[ACK_LEN];
-  rimeaddr_t *dest = NULL;
+  rimeaddr_t dest;
 
   watchdog_periodic();
   t0 = RTIMER_NOW();
@@ -835,17 +835,17 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
           if(is_broadcast) {
             got_strobe_ack++;
             encounter_time = previous_txtime;
-            dest = (rimeaddr_t *)(ackbuf+3);
+            memcpy(&dest, ackbuf+3, 8);
             uint16_t neighbor_rank = (ackbuf[3+8+1]<<8) + ackbuf[3+8];
-            rpl_set_parent_rank((uip_lladdr_t *)dest, neighbor_rank);
-            orpl_broadcast_acked(dest);
+            rpl_set_parent_rank((uip_lladdr_t *)&dest, neighbor_rank);
+            orpl_broadcast_acked(&dest);
           } else {
           /* Received ack for anycast, stop strobing */
             got_strobe_ack++;
             encounter_time = previous_txtime;
-            dest = (rimeaddr_t *)(ackbuf+3);
+            memcpy(&dest, ackbuf+3, 8);
             uint16_t neighbor_rank = (ackbuf[3+8+1]<<8) + ackbuf[3+8];
-            rpl_set_parent_rank((uip_lladdr_t *)dest, neighbor_rank);
+            rpl_set_parent_rank((uip_lladdr_t *)&dest, neighbor_rank);
             if(got_strobe_ack >= 1) break;
           }
         }
@@ -924,13 +924,13 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
   if(!is_broadcast) {
 	  if(got_strobe_ack) {
 		  ORPL_LOG_FROM_PACKETBUF("Cmac: acked by %u s %u c %d seq %u",
-				  				  ORPL_LOG_NODEID_FROM_RIMEADDR(dest),
+				  				  ORPL_LOG_NODEID_FROM_RIMEADDR(&dest),
 				  				  strobe_duration,
 				  				  collision_count, seqno);
 		  /* Set link-layer address of the node that acked the packet */
-		  packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, dest);
+		  packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
 		  if(packetbuf_attr(PACKETBUF_ATTR_ORPL_DIRECTION) == direction_down) {
-			  orpl_acked_down_insert(orpl_packetbuf_seqno(), dest);
+			  orpl_acked_down_insert(orpl_packetbuf_seqno(), &dest);
 		  }
 	  } else {
 		  ORPL_LOG_FROM_PACKETBUF("Cmac:! noack s %u c %d seq %u", strobe_duration, collisions, seqno);
