@@ -157,8 +157,8 @@ orpl_routing_set_contains(const uip_ipaddr_t *ipv6)
       /* If one bucket is empty, then the element isn't included in the filter */
       contains = 0;
       break;
-    hash /= ROUTING_SET_M;
     }
+    hash /= ROUTING_SET_M;
   }
   return contains;
 }
