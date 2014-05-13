@@ -77,15 +77,15 @@ uint32_t orpl_broadcast_count = 0;
 #endif
 
 #if FREEZE_TOPOLOGY
-#define UPDATE_EDC_MAX_TIME 1*60
-#define UPDATE_ROUTING_SET_MIN_TIME 2*60
+#define UPDATE_EDC_MAX_TIME 4*60
+#define UPDATE_ROUTING_SET_MIN_TIME 5*60
 #else
 #define UPDATE_EDC_MAX_TIME 0
 #define UPDATE_ROUTING_SET_MIN_TIME 0
 #endif
 
 /* PRR threshold for considering a neighbor as usable */
-#define NEIGHBOR_PRR_THRESHOLD 35
+#define NEIGHBOR_PRR_THRESHOLD 50
 
 /* Rank changes of more than RANK_MAX_CHANGE trigger a trickle timer reset */
 #define RANK_MAX_CHANGE (2*EDC_DIVISOR)

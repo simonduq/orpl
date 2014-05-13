@@ -129,5 +129,7 @@ void orpl_broadcast_done();
 void orpl_update_edc(rpl_rank_t edc);
 /* ORPL initialization */
 void orpl_init(const uip_ipaddr_t *ipaddr, int is_root, int up_only);
+/* Function that computes the metric EDC */
+rpl_rank_t orpl_calculate_edc(int verbose);
 
 #endif /* __ORPL_H__ */

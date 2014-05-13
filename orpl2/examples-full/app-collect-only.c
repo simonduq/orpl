@@ -45,7 +45,7 @@
 #include "cc2420.h"
 #include <stdio.h>
 
-#define SEND_INTERVAL   (60 * CLOCK_SECOND)
+#define SEND_INTERVAL   (4 * 60 * CLOCK_SECOND)
 #define UDP_PORT 1234
 
 static char buf[APP_PAYLOAD_LEN];
@@ -103,7 +103,6 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
     printf("Node id unset, my mac is ");
     uip_debug_lladdr_print(&rimeaddr_node_addr);
     printf("\n");
-    while(1);
     PROCESS_EXIT();
   }
 
