@@ -7,7 +7,7 @@
   <project EXPORT="discard">[APPS_DIR]/collect-view</project>
   <project EXPORT="discard">[APPS_DIR]/powertracker</project>
   <simulation>
-    <title>ORPL -- Down-only Application</title>
+    <title>ORPL -- Down-only Application Full</title>
     <randomseed>123461</randomseed>
     <motedelay_us>1000000</motedelay_us>
     <radiomedium>
