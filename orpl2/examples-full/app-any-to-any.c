@@ -52,7 +52,6 @@
 #define SEND_INTERVAL   (60 * CLOCK_SECOND)
 #define UDP_PORT 1234
 
-static char buf[APP_PAYLOAD_LEN];
 static struct simple_udp_connection unicast_connection;
 static uint16_t current_cnt = 0;
 
@@ -126,8 +125,7 @@ app_send_to(uint16_t id, int ping, uint32_t seqno)
   orpl_set_curr_seqno(data.seqno);
   set_ipaddr_from_id(&dest_ipaddr, id);
 
-  *((struct app_data*)buf) = data;
-  simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &dest_ipaddr);
+  simple_udp_sendto(&unicast_connection, &data, sizeof(data), &dest_ipaddr);
 }
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(unicast_sender_process, ev, data)

@@ -62,15 +62,15 @@ appdata_copy(struct app_data *dst, struct app_data *src)
 struct app_data *
 appdataptr_from_uip()
 {
-  return (struct app_data *)((char*)uip_buf + ((uip_len - APP_PAYLOAD_LEN - 1)));
+  return (struct app_data *)((char*)uip_buf + ((uip_len - sizeof(struct app_data))));
 }
 
 /* Get dataptr from the current packetbuf */
 struct app_data *
 appdataptr_from_packetbuf()
 {
-  if(packetbuf_datalen() < 64) return 0;
-  return (struct app_data *)((char*)packetbuf_dataptr() + ((packetbuf_datalen() - APP_PAYLOAD_LEN - 1)));
+  if(packetbuf_datalen() < sizeof(struct app_data)) return 0;
+  return (struct app_data *)((char*)packetbuf_dataptr() + ((packetbuf_datalen() - sizeof(struct app_data))));
 }
 
 /* Log information about a data packet along with ORPL routing information */

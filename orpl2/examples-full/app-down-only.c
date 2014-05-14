@@ -51,7 +51,6 @@
 #define UDP_PORT 1234
 #define TARGET_REACHABLE_RATIO 80
 
-static char buf[APP_PAYLOAD_LEN];
 static struct simple_udp_connection unicast_connection;
 
 /*---------------------------------------------------------------------------*/
@@ -87,8 +86,7 @@ void app_send_to(uint16_t id) {
   orpl_set_curr_seqno(data.seqno);
   set_ipaddr_from_id(&dest_ipaddr, id);
 
-  *((struct app_data*)buf) = data;
-  simple_udp_sendto(&unicast_connection, buf, sizeof(buf) + 1, &dest_ipaddr);
+  simple_udp_sendto(&unicast_connection, &data, sizeof(data), &dest_ipaddr);
 
   cnt++;
 }

@@ -62,8 +62,6 @@
 #define ROOT_ID 1
 #endif
 
-#define APP_PAYLOAD_LEN 64
-
 /* Returns the node's node-id */
 uint16_t get_n_nodes();
 /* Returns the total number of nodes in the deployment */
