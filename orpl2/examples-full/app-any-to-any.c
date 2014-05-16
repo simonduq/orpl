@@ -78,7 +78,7 @@ is_id_in_any_to_any(uint16_t id)
 }
 
 /*---------------------------------------------------------------------------*/
-PROCESS(unicast_sender_process, "ORPL -- Collect-only Application");
+PROCESS(unicast_sender_process, "ORPL -- Any-to-any Application");
 AUTOSTART_PROCESSES(&unicast_sender_process);
 /*---------------------------------------------------------------------------*/
 void app_send_to(uint16_t id, int ping, uint32_t seqno);
@@ -165,13 +165,13 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
     etimer_set(&periodic_timer, SEND_INTERVAL);
 
     while(1) {
+      uint16_t target_id;
+
       etimer_set(&send_timer, random_rand() % (SEND_INTERVAL));
       PROCESS_WAIT_UNTIL(etimer_expired(&send_timer));
 
-      static uint16_t target_id;
       do {
-        get_node_id_from_index(target_id++);
-        target_id %= get_n_nodes();
+        target_id = get_node_id_from_index((random_rand()>>8)%get_n_nodes());
       } while (target_id == node_id || !is_id_in_any_to_any(target_id));
 
       if(target_id < node_id || target_id == ROOT_ID) {
