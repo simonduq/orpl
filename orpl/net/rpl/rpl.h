@@ -38,14 +38,17 @@
 #ifndef RPL_H
 #define RPL_H
 
-#include "net/rpl/rpl-conf.h"
+#include "rpl-conf.h"
 
 #include "lib/list.h"
 #include "net/uip.h"
 #include "net/uip-ds6.h"
 #include "sys/ctimer.h"
-#include "net/rime/rimeaddr.h"
 
+#if WITH_ORPL
+/* Make the rpl_parents table public for ORPL */
+NBR_TABLE_DECLARE(rpl_parents);
+#endif /* WITH_ORPL */
 /*---------------------------------------------------------------------------*/
 /* The amount of parents that this node has in a particular DAG. */
 #define RPL_PARENT_COUNT(dag)   list_length((dag)->parents)
@@ -111,14 +114,16 @@ struct rpl_dag;
 struct rpl_parent {
   struct rpl_parent *next;
   struct rpl_dag *dag;
+#if RPL_DAG_MC != RPL_DAG_MC_NONE
   rpl_metric_container_t mc;
-  uip_ipaddr_t addr;
+#endif /* RPL_DAG_MC != RPL_DAG_MC_NONE */
   rpl_rank_t rank;
-  uint8_t link_metric;
+#if WITH_ORPL
+  uint16_t bc_ackcount; /* Broadcast ack count used by ORPL for link estimation */
+#endif /* WITH_ORPL */
+  uint16_t link_metric;
   uint8_t dtsn;
   uint8_t updated;
-  uint16_t dio_received;
-  uint16_t dio_count;
 };
 typedef struct rpl_parent rpl_parent_t;
 /*---------------------------------------------------------------------------*/
@@ -158,7 +163,7 @@ typedef struct rpl_instance rpl_instance_t;
  *  Resets the objective function state for a specific DAG. This function is
  *  called when doing a global repair on the DAG.
  *
- * parent_state_callback(parent, known, etx)
+ * neighbor_link_callback(parent, known, etx)
  *
  *  Receives link-layer neighbor information. The parameter "known" is set
  *  either to 0 or 1. The "etx" parameter specifies the current
@@ -187,7 +192,7 @@ typedef struct rpl_instance rpl_instance_t;
  */
 struct rpl_of {
   void (*reset)(struct rpl_dag *);
-  void (*parent_state_callback)(rpl_parent_t *, int, int);
+  void (*neighbor_link_callback)(rpl_parent_t *, int, int);
   rpl_parent_t *(*best_parent)(rpl_parent_t *, rpl_parent_t *);
   rpl_dag_t *(*best_dag)(rpl_dag_t *, rpl_dag_t *);
   rpl_rank_t (*calculate_rank)(rpl_parent_t *, rpl_rank_t);
@@ -242,7 +247,16 @@ rpl_instance_t *rpl_get_instance(uint8_t instance_id);
 void rpl_update_header_empty(void);
 int rpl_update_header_final(uip_ipaddr_t *addr);
 int rpl_verify_header(int);
+void rpl_insert_header(void);
 void rpl_remove_header(void);
 uint8_t rpl_invert_header(void);
+uip_ipaddr_t *rpl_get_parent_ipaddr(rpl_parent_t *nbr);
+rpl_rank_t rpl_get_parent_rank(uip_lladdr_t *addr);
+uint16_t rpl_get_parent_link_metric(uip_lladdr_t *addr);
+void rpl_dag_init(void);
+#if WITH_ORPL
+rpl_parent_t *rpl_get_parent(const uip_lladdr_t *addr);
+void rpl_set_parent_rank(const uip_lladdr_t *addr, rpl_rank_t rank);
+#endif /* WITH_ORPL */
 /*---------------------------------------------------------------------------*/
 #endif /* RPL_H */
