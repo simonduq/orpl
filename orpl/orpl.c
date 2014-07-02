@@ -77,8 +77,10 @@ uint32_t orpl_broadcast_count = 0;
 #endif
 
 #if FREEZE_TOPOLOGY
-#define UPDATE_EDC_MAX_TIME 4*60
-#define UPDATE_ROUTING_SET_MIN_TIME 5*60
+//#define UPDATE_EDC_MAX_TIME 4*60
+//#define UPDATE_ROUTING_SET_MIN_TIME 5*60
+#define UPDATE_EDC_MAX_TIME 1*60
+#define UPDATE_ROUTING_SET_MIN_TIME 2*60
 #else
 #define UPDATE_EDC_MAX_TIME 0
 #define UPDATE_ROUTING_SET_MIN_TIME 0
@@ -214,7 +216,7 @@ orpl_is_edc_frozen()
 int
 orpl_are_routing_set_active()
 {
-  return orpl_up_only == 0 && (FREEZE_TOPOLOGY || clock_seconds() > UPDATE_ROUTING_SET_MIN_TIME);
+  return orpl_up_only == 0 && !(FREEZE_TOPOLOGY && clock_seconds() <= UPDATE_ROUTING_SET_MIN_TIME);
 }
 
 /* Returns 1 if the node is root of ORPL */
