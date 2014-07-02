@@ -108,7 +108,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
                       NULL, UDP_PORT, receiver);
 
   if(node_id == SRC_ID) {
-	etimer_set(&periodic_timer, 3 * 60 * CLOCK_SECOND);
+	etimer_set(&periodic_timer, 8 * 60 * CLOCK_SECOND);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
 	etimer_set(&periodic_timer, SEND_INTERVAL);
     while(1) {
