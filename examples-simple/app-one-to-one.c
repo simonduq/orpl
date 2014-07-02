@@ -29,9 +29,7 @@
  */
 /**
  * \file
- *         Example file using ORPL for a data collection.
- *         Enables logging as used in the ORPL SenSyS'13 paper.
- *         Can be deployed in the Indriya or Twist testbeds.
+ *         Example file using ORPL for one-to-one communication.
  *
  * \author Simon Duquennoy <simonduq@sics.se>
  */
