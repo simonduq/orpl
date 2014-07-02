@@ -155,12 +155,10 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 
-  printf("App: %u starting\n", node_id);
-
   if(node_id == ROOT_ID) {
     NETSTACK_RDC.off(1);
   } else if(is_id_in_any_to_any(get_node_id())) {
-    etimer_set(&periodic_timer, 2 * 60 * CLOCK_SECOND);
+    etimer_set(&periodic_timer, 8 * 60 * CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
     etimer_set(&periodic_timer, SEND_INTERVAL);
 
