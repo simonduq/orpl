@@ -1,7 +1,7 @@
 CONTIKI=/home/user/contiki-2.7
 ORPL=../orpl
 
-CONTIKI_PROJECT = app-collect-only
+CONTIKI_PROJECT = app-collect-only app-one-to-one
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 TARGET=sky
 
