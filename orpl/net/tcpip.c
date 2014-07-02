@@ -635,8 +635,8 @@ tcpip_ipv6_output(void)
         }
       }
 #else /* !WITH_ORPL */
-      /* Set anycast MAC address instead of routing */
 
+      /* Set ORPL sequence number */
       uint32_t seqno = orpl_get_curr_seqno();
       if(uip_ds6_is_my_addr(&UIP_IP_BUF->srcipaddr)) {
         /* We are originator of the data, check if there is
@@ -650,6 +650,7 @@ tcpip_ipv6_output(void)
       }
       orpl_set_curr_seqno(seqno);
 
+      /* Set anycast MAC address instead of routing */
       if(orpl_is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
         ORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;
