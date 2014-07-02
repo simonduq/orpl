@@ -637,10 +637,15 @@ tcpip_ipv6_output(void)
 #else /* !WITH_ORPL */
       /* Set anycast MAC address instead of routing */
 
-      /* Get ORPL seqno as set by application */
       uint32_t seqno = orpl_get_curr_seqno();
-      if(seqno == 0) { /* We are not originator of the data, set
-      seqno of packet being forwarded */
+      if(uip_ds6_is_my_addr(&UIP_IP_BUF->srcipaddr)) {
+        /* We are originator of the data, check if there is
+         * a seqno already set by application layer */
+        if(seqno == 0) {
+          /* No seqno set, assign a new one */
+          seqno = orpl_get_new_seqno();
+        }
+      } else {
         seqno = orpl_packetbuf_seqno();
       }
       orpl_set_curr_seqno(seqno);
