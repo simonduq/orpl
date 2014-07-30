@@ -34,6 +34,9 @@
 #ifndef __PROJECT_CONF_H__
 #define __PROJECT_CONF_H__
 
+#undef ORPL_LOG
+#define ORPL_LOG(...) printf(__VA_ARGS__)
+
 /* The ContikiMAC wakeup interval */
 #define CONTIKIMAC_CONF_CYCLE_TIME (RTIMER_ARCH_SECOND / 2)
 
