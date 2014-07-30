@@ -56,18 +56,38 @@
 
 /* Default implementation for logging functions */
 #ifndef ORPL_LOG
-#define ORPL_LOG(...) PRINTF(...)
-#define ORPL_LOG_FROM_APPDATAPTR(appdataptr, ...) PRINTF(...)
-#define ORPL_LOG_NULL(...) PRINTF(...)
-#define ORPL_LOG_FROM_UIP(...) PRINTF(...)
-#define ORPL_LOG_FROM_PACKETBUF(...) PRINTF(...)
-#define ORPL_LOG_IPADDR(addr) PRINT6ADDR(addr)
-#define ORPL_LOG_LLADDR(addr) PRINTLLADDR(addr)
-#define ORPL_LOG_NODEID_FROM_RIMEADDR(addr) ((addr).u8[RIMEADDR_SIZE-1])
-#define ORPL_LOG_NODEID_FROM_IPADDR(addr) ((addr).u8[15])
-#define ORPL_LOG_INC_HOPCOUNT_FROM_PACKETBUF()
-#define ORPL_LOG_INC_FPCOUNT_FROM_PACKETBUF()
+#define ORPL_LOG(...) PRINTF(__VA_ARGS__)
 #endif /* ORPL_LOG */
+#ifndef ORPL_LOG_NULL
+#define ORPL_LOG_NULL(...) {ORPL_LOG(__VA_ARGS__);ORPL_LOG("\n");}
+#endif /* ORPL_LOG_NULL */
+#ifndef ORPL_LOG_FROM_APPDATAPTR
+#define ORPL_LOG_FROM_APPDATAPTR(appdataptr, ...) ORPL_LOG_NULL(__VA_ARGS__)
+#endif /* ORPL_LOG_FROM_APPDATAPTR */
+#ifndef ORPL_LOG_FROM_UIP
+#define ORPL_LOG_FROM_UIP(...) ORPL_LOG_NULL(__VA_ARGS__)
+#endif /* ORPL_LOG_FROM_UIP */
+#ifndef ORPL_LOG_FROM_PACKETBUF
+#define ORPL_LOG_FROM_PACKETBUF(...) ORPL_LOG_NULL(__VA_ARGS__)
+#endif /* ORPL_LOG_FROM_PACKETBUF */
+#ifndef ORPL_LOG_IPADDR
+#define ORPL_LOG_IPADDR(addr) PRINT6ADDR(addr)
+#endif /* ORPL_LOG_IPADDR */
+#ifndef ORPL_LOG_LLADDR
+#define ORPL_LOG_LLADDR(addr) PRINTLLADDR(addr)
+#endif /* ORPL_LOG_LLADDR */
+#ifndef ORPL_LOG_NODEID_FROM_RIMEADDR
+#define ORPL_LOG_NODEID_FROM_RIMEADDR(addr) ((addr)->u8[RIMEADDR_SIZE-1])
+#endif /* ORPL_LOG_NODEID_FROM_RIMEADDR */
+#ifndef ORPL_LOG_NODEID_FROM_IPADDR
+#define ORPL_LOG_NODEID_FROM_IPADDR(addr) ((addr)->u8[15])
+#endif /* ORPL_LOG_NODEID_FROM_IPADDR */
+#ifndef ORPL_LOG_INC_HOPCOUNT_FROM_PACKETBUF
+#define ORPL_LOG_INC_HOPCOUNT_FROM_PACKETBUF()
+#endif /* ORPL_LOG_INC_HOPCOUNT_FROM_PACKETBUF */
+#ifndef ORPL_LOG_INC_FPCOUNT_FROM_PACKETBUF
+#define ORPL_LOG_INC_FPCOUNT_FROM_PACKETBUF()
+#endif /* ORPL_LOG_INC_FPCOUNT_FROM_PACKETBUF */
 
 /* Fixed point divisor */
 #define EDC_DIVISOR 128
@@ -93,6 +113,8 @@ uint32_t orpl_packetbuf_seqno();
 void orpl_set_curr_seqno(uint32_t seqno);
 /* Get the current ORPL sequence number */
 uint32_t orpl_get_curr_seqno();
+/* Get a new ORPL sequence number */
+uint32_t orpl_get_new_seqno();
 /* Build a global link-layer address from an IPv6 based on its UUID64 */
 void lladdr_from_ipaddr_uuid(uip_lladdr_t *lladdr, const uip_ipaddr_t *ipaddr);
 /* Returns 1 if EDC is frozen, i.e. we are not allowed to change edc */
@@ -128,7 +150,7 @@ void orpl_broadcast_done();
 /* Update the current EDC (rank of the node) */
 void orpl_update_edc(rpl_rank_t edc);
 /* ORPL initialization */
-void orpl_init(const uip_ipaddr_t *ipaddr, int is_root, int up_only);
+void orpl_init(int is_root, int up_only);
 /* Function that computes the metric EDC */
 rpl_rank_t orpl_calculate_edc(int verbose);
 

@@ -111,7 +111,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
   printf("App: %u starting\n", node_id);
 
   deployment_init(&global_ipaddr);
-  orpl_init(&global_ipaddr, node_id == ROOT_ID, 1);
+  orpl_init(node_id == ROOT_ID, 1);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 

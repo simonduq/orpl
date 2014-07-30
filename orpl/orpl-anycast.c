@@ -256,7 +256,7 @@ orpl_anycast_802154_frame_must_ack(uint8_t *data, uint8_t len)
       /* TODO ORPL: better document this addressing */
       uip_ipaddr_t dest_ipv6;
       memcpy(&dest_ipv6, &global_ipv6, 8); /* override prefix */
-      memcpy(((char*)&dest_ipv6)+8, data + (CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER ? 2 : 0) + 33, 8);
+      memcpy(((char*)&dest_ipv6)+8, data + (CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER ? 2 : 0) + 34, 8);
 
       if(uip_ip6addr_cmp(&dest_ipv6, &global_ipv6)) {
         /* Take the data if it is for us */

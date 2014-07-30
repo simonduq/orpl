@@ -105,7 +105,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
     uip_ds6_addr_add(&global_ipaddr, 0, ADDR_AUTOCONF);
   }
 
-  orpl_init(&global_ipaddr, node_id == ROOT_ID, 1);
+  orpl_init(node_id == ROOT_ID, 1);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 

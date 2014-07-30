@@ -635,16 +635,24 @@ tcpip_ipv6_output(void)
         }
       }
 #else /* !WITH_ORPL */
-      /* Set anycast MAC address instead of routing */
-
-      /* Get ORPL seqno as set by application */
-      uint32_t seqno = orpl_get_curr_seqno();
-      if(seqno == 0) { /* We are not originator of the data, set
-      seqno of packet being forwarded */
+      /* Set ORPL sequence number */
+      uint32_t seqno;
+      if(uip_ds6_is_my_addr(&UIP_IP_BUF->srcipaddr)) {
+        /* We are originator of the data, get seqno
+         * possibly set by application layer */
+        seqno = orpl_get_curr_seqno();
+      } else {
         seqno = orpl_packetbuf_seqno();
+      }
+      if(seqno == 0) {
+        /* No seqno set, assign a new one
+         * (happens either when we are originator but the application has not set a seqno
+         * or when we are forwarder but the originator (outside the PAN) did not set a seqno) */
+        seqno = orpl_get_new_seqno();
       }
       orpl_set_curr_seqno(seqno);
 
+      /* Set anycast MAC address instead of routing */
       if(orpl_is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
         ORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;
@@ -656,6 +664,8 @@ tcpip_ipv6_output(void)
         anycast_addr = &anycast_addr_up;
       } else { /* We are the root and need to route upwards =>
       use fallback interface. */
+        orpl_packetbuf_set_seqno(0);
+        orpl_set_curr_seqno(0);
 #ifdef UIP_FALLBACK_INTERFACE
     	  PRINTF("FALLBACK: removing ext hdrs & setting proto %d %d\n",
     			  uip_ext_len, *((uint8_t *)UIP_IP_BUF + 40));
