@@ -658,13 +658,13 @@ tcpip_ipv6_output(void)
 
       /* Set anycast MAC address instead of routing */
       if(orpl_is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
-        OORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
+        ORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;
       } else if(orpl_routing_set_contains(&UIP_IP_BUF->destipaddr) && !orpl_blacklist_contains(seqno)) {
-        OORPL_LOG_FROM_UIP("Tcpip: fw down");
+        ORPL_LOG_FROM_UIP("Tcpip: fw down");
         anycast_addr = &anycast_addr_down;
       } else if(orpl_is_root() == 0){
-        OORPL_LOG_FROM_UIP("Tcpip: fw up");
+        ORPL_LOG_FROM_UIP("Tcpip: fw up");
         anycast_addr = &anycast_addr_up;
       } else { /* We are the root and need to route upwards =>
       use fallback interface. */
