@@ -34,6 +34,8 @@
 #ifndef __PROJECT_CONF_H__
 #define __PROJECT_CONF_H__
 
+#define WITH_ORPL 0
+
 /* The IEEE 802.15.4 channel in use */
 #undef RF_CHANNEL
 #define RF_CHANNEL              15
@@ -79,6 +81,8 @@ typedef uint32_t rtimer_clock_t;
 #if WITH_ORPL
 #include "orpl-contiki-conf.h"
 #else
+#define RPL_CONF_INIT_LINK_METRIC 2
+#define RPL_CONF_MIN_HOPRANKINC 128
 #endif /* WITH_ORPL */
 
 #endif /* __PROJECT_CONF_H__ */
