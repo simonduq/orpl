@@ -68,8 +68,6 @@ uint16_t get_n_nodes();
 uint16_t get_node_id();
 /* Returns a node-id from a node's link-layer address */
 uint16_t node_id_from_rimeaddr(const rimeaddr_t *addr);
-/* Build a global link-layer address from an IPv6 based on its UUID64 */
-void lladdr_from_ipaddr_uuid(uip_lladdr_t *lladdr, const uip_ipaddr_t *ipaddr);
 /* Returns a node-id from a node's IPv6 address */
 uint16_t node_id_from_ipaddr(const uip_ipaddr_t *addr);
 /* Returns a node-id from a node's absolute index in the deployment */

@@ -101,7 +101,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
     NETSTACK_RDC.off(1);
   }
 
-  orpl_init(&global_ipaddr, node_id == ROOT_ID, 0);
+  orpl_init(node_id == ROOT_ID, 0);
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 

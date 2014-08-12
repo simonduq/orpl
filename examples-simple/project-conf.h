@@ -34,6 +34,8 @@
 #ifndef __PROJECT_CONF_H__
 #define __PROJECT_CONF_H__
 
+//#define WITH_ORPL 1
+
 #undef ORPL_LOG
 #define ORPL_LOG(...) printf(__VA_ARGS__)
 

@@ -157,6 +157,18 @@ init_global_ipv6()
   }
 }
 
+/* Build a global link-layer address from an IPv6 based on its UUID64 */
+void
+lladdr_from_ipaddr_uuid(uip_lladdr_t *lladdr, const uip_ipaddr_t *ipaddr)
+{
+#if (UIP_LLADDR_LEN == 8)
+  memcpy(lladdr, ipaddr->u8 + 8, UIP_LLADDR_LEN);
+  lladdr->addr[0] ^= 0x02;
+#else
+#error orpl.c supports only EUI-64 identifiers
+#endif
+}
+
 /* Set the 32-bit ORPL sequence number in packetbuf */
 void
 orpl_packetbuf_set_seqno(uint32_t seqno)
