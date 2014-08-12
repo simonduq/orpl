@@ -713,6 +713,9 @@ We just update the rank and return the DAG. */
       RPL_LOLLIPOP_INCREMENT(instance->dtsn_out);
       rpl_schedule_dao(instance);
     }
+    ORPL_LOG("RPL: parent switch %u -> %u, rank %u -> %u\n",
+            last_parent ? node_id_from_lipaddr(rpl_get_parent_ipaddr(last_parent)) : 0, node_id_from_lipaddr(rpl_get_parent_ipaddr(best_dag->preferred_parent)), old_rank, best_dag->rank);
+
     rpl_reset_dio_timer(instance);
   } else if(best_dag->rank != old_rank) {
     PRINTF("RPL: Preferred parent update, rank changed from %u to %u\n",
