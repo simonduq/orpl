@@ -75,6 +75,10 @@ typedef uint32_t rtimer_clock_t;
 #define UIP_CONF_UDP_CHECKSUMS   0
 
 #include "tools/orpl-log.h"
+
+#if WITH_ORPL
 #include "orpl-contiki-conf.h"
+#else
+#endif /* WITH_ORPL */
 
 #endif /* __PROJECT_CONF_H__ */

@@ -39,6 +39,7 @@
 #define __ORPL_CONTIKI_CONF_H__
 
 /* Used for modification of core files */
+#undef WITH_ORPL
 #define WITH_ORPL 1
 
 /* EDC is the objective function used by ORPL */
