@@ -81,12 +81,16 @@ typedef uint32_t rtimer_clock_t;
 #if WITH_ORPL
 #include "orpl-contiki-conf.h"
 #else
+/* Makes RPL more reactive */
 #define RPL_CONF_INIT_LINK_METRIC 2
+/* To equal RPL_DAG_MC_ETX_DIVISOR */
 #define RPL_CONF_MIN_HOPRANKINC 128
-/* Contiki netstack: RDC */
+/* Use Contikimac implementation with logs (and extended guard times) */
 #undef NETSTACK_CONF_RDC
 #define NETSTACK_CONF_RDC     contikimac_with_logs_driver
+/* Use Contikimac phase lock */
 #define CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION 1
+/* RPL without downward routes. Modify if you need more than upward-only. */
 #undef RPL_CONF_MOP
 #define RPL_CONF_MOP RPL_MOP_NO_DOWNWARD_ROUTES
 #endif /* WITH_ORPL */
