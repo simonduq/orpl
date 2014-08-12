@@ -109,6 +109,7 @@ app_send_to(uint16_t id, int ping, uint32_t seqno)
   struct app_data data;
   uip_ipaddr_t dest_ipaddr;
 
+  data.magic = ORPL_LOG_MAGIC;
   data.seqno = seqno;
   data.src = node_id;
   data.dest = id;

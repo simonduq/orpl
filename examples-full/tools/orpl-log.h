@@ -37,9 +37,13 @@
 #ifndef ORPL_LOG_H
 #define ORPL_LOG_H
 
+/* Used to identify packets carrying ORPL log */
+#define ORPL_LOG_MAGIC 0xcafebabe
+
 /* Data structure copied at the end of all data packets, making it possible
  * to trace packets at every hop, from every layer. */
 struct app_data {
+  uint32_t magic;
   uint32_t seqno;
   uint16_t src;
   uint16_t dest;

@@ -83,6 +83,12 @@ typedef uint32_t rtimer_clock_t;
 #else
 #define RPL_CONF_INIT_LINK_METRIC 2
 #define RPL_CONF_MIN_HOPRANKINC 128
+/* Contiki netstack: RDC */
+#undef NETSTACK_CONF_RDC
+#define NETSTACK_CONF_RDC     contikimac_with_logs_driver
+#define CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION 1
+#undef RPL_CONF_MOP
+#define RPL_CONF_MOP RPL_MOP_NO_DOWNWARD_ROUTES
 #endif /* WITH_ORPL */
 
 #endif /* __PROJECT_CONF_H__ */

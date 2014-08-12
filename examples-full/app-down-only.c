@@ -79,6 +79,7 @@ void app_send_to(uint16_t id) {
   struct app_data data;
   uip_ipaddr_t dest_ipaddr;
 
+  data.magic = ORPL_LOG_MAGIC;
   data.seqno = ((uint32_t)node_id << 16) + cnt;
   data.src = node_id;
   data.dest = id;
