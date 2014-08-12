@@ -77,11 +77,7 @@ static rpl_of_t * const objective_functions[] = {&RPL_OF};
 
 /*---------------------------------------------------------------------------*/
 /* Per-parent RPL information */
-#if WITH_ORPL /* We need the table to be global as ORPL also uses it */
 NBR_TABLE_GLOBAL(rpl_parent_t, rpl_parents);
-#else /* WITH_ORPL */
-NBR_TABLE(rpl_parent_t, rpl_parents);
-#endif /* WITH_ORPL */
 /*---------------------------------------------------------------------------*/
 /* Allocate instance table. */
 rpl_instance_t instance_table[RPL_MAX_INSTANCES];

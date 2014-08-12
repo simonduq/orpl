@@ -39,6 +39,7 @@
 #include "contiki-conf.h"
 #include "lib/random.h"
 #include "orpl.h"
+#include "net/rpl/rpl-private.h"
 #include "deployment.h"
 #include "simple-energest.h"
 #include "simple-udp.h"
@@ -80,7 +81,9 @@ void app_send_to(uint16_t id) {
 
   ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending");
 
+#if WITH_ORPL
   orpl_set_curr_seqno(data.seqno);
+#endif /* WITH_ORPL */
   set_ipaddr_from_id(&dest_ipaddr, id);
 
   simple_udp_sendto(&unicast_connection, &data, sizeof(data), &dest_ipaddr);
@@ -106,12 +109,14 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 
   cc2420_set_txpower(RF_POWER);
   cc2420_set_cca_threshold(RSSI_THR);
-  simple_energest_start();
+  orpl_log_start();
 
   printf("App: %u starting\n", node_id);
 
   deployment_init(&global_ipaddr);
+#if WITH_ORPL
   orpl_init(node_id == ROOT_ID, 1);
+#endif /* WITH_ORPL */
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 
@@ -123,7 +128,7 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
       etimer_set(&send_timer, random_rand() % (SEND_INTERVAL));
       PROCESS_WAIT_UNTIL(etimer_expired(&send_timer));
 
-      if(orpl_current_edc() != 0xffff) {
+      if(default_instance != NULL) {
         app_send_to(ROOT_ID);
       } else {
         printf("App: not in DODAG\n");

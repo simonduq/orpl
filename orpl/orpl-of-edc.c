@@ -75,7 +75,6 @@ static uint16_t hbh_edc = EDC_DIVISOR;
 /* The size of the forwarder set and neighbor set.
  * Both are needed in some other parts of ORPL. */
 int forwarder_set_size = 0;
-int neighbor_set_size = 0;
 
 /* Utility function for computing the forwarder set. Adds a parent and returns the
  * resulting EDC */
@@ -151,7 +150,6 @@ orpl_calculate_edc(int verbose)
   }
 
   forwarder_set_size = 0;
-  neighbor_set_size = 0;
 
   if(verbose) {
     printf("ORPL: starting EDC calculation. hbh_edc: %u, e2e_edc %u\n", hbh_edc, orpl_current_edc());
@@ -195,8 +193,6 @@ orpl_calculate_edc(int verbose)
       tentative_edc = add_to_forwarder_set(curr_p, curr_p_rank, curr_p_ackcount,
                 &curr_ackcount_sum, &curr_ackcount_edc_sum, verbose);
 
-      neighbor_set_size++;
-
       if(tentative_edc < edc) {
         /* The parent is now part of the forwarder set */
         edc = tentative_edc;
@@ -236,7 +232,6 @@ reset(rpl_dag_t *sag)
   PRINTF("ORPL: reset EDC\n");
   hbh_edc = EDC_DIVISOR;
   forwarder_set_size = 0;
-  neighbor_set_size = 0;
 }
 
 /* Called after transmitting to a neighbor */

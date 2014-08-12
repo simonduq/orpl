@@ -45,10 +45,7 @@
 #include "net/uip-ds6.h"
 #include "sys/ctimer.h"
 
-#if WITH_ORPL
-/* Make the rpl_parents table public for ORPL */
 NBR_TABLE_DECLARE(rpl_parents);
-#endif /* WITH_ORPL */
 /*---------------------------------------------------------------------------*/
 /* The amount of parents that this node has in a particular DAG. */
 #define RPL_PARENT_COUNT(dag)   list_length((dag)->parents)

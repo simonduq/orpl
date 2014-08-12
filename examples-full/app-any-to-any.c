@@ -122,7 +122,9 @@ app_send_to(uint16_t id, int ping, uint32_t seqno)
     ORPL_LOG_FROM_APPDATAPTR(&data, "App: sending pong");
   }
 
+#if WITH_ORPL
   orpl_set_curr_seqno(data.seqno);
+#endif /* WITH_ORPL */
   set_ipaddr_from_id(&dest_ipaddr, id);
 
   simple_udp_sendto(&unicast_connection, &data, sizeof(data), &dest_ipaddr);
@@ -146,12 +148,14 @@ PROCESS_THREAD(unicast_sender_process, ev, data)
 
   cc2420_set_txpower(RF_POWER);
   cc2420_set_cca_threshold(RSSI_THR);
-  simple_energest_start();
+  orpl_log_start();
 
   printf("App: %u starting\n", node_id);
 
   deployment_init(&global_ipaddr);
+#if WITH_ORPL
   orpl_init(node_id == ROOT_ID, 0);
+#endif /* WITH_ORPL */
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
 

@@ -62,6 +62,8 @@ uint16_t log_node_id_from_rimeaddr(const void *rimeaddr);
 uint16_t log_node_id_from_ipaddr(const void *ipaddr);
 /* Prints out the content of the active routing set */
 void orpl_log_print_routing_set();
+/* Starts logging process */
+void orpl_log_start();
 
 #define ORPL_LOG(...) printf(__VA_ARGS__)
 #define ORPL_LOG_FROM_APPDATAPTR(appdataptr, ...) { printf(__VA_ARGS__); log_appdataptr(appdataptr); }
