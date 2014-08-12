@@ -302,6 +302,8 @@ packet_sent(void *ptr, int status, int num_transmissions)
         	  mac_call_sent_callback(sent, cptr, status, num_tx);
         	}
 #else /* WITH_ORPL */
+          ORPL_LOG_FROM_PACKETBUF("Csma:! dropping %u after %d tx, %d collisions",
+        	                  ORPL_LOG_NODEID_FROM_RIMEADDR(&n->addr) , n->transmissions, n->collisions);
           PRINTF("csma: drop with status %d after %d transmissions, %d collisions\n",
                  status, n->transmissions, n->collisions);
           free_packet(n, q);
@@ -310,18 +312,14 @@ packet_sent(void *ptr, int status, int num_transmissions)
         }
       } else {
         if(status == MAC_TX_OK) {
-#if WITH_ORPL
           if(!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
                                  &rimeaddr_null)) {
             ORPL_LOG_FROM_PACKETBUF("Csma: success %u after %d tx, %d collisions",
                 ORPL_LOG_NODEID_FROM_RIMEADDR(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)), n->transmissions, n->collisions);
           }
-#endif /* WITH_ORPL */
           PRINTF("csma: rexmit ok %d\n", n->transmissions);
         } else {
-#if WITH_ORPL
           ORPL_LOG_FROM_PACKETBUF("Csma:! dropping due to rexmit failed");
-#endif /* WITH_ORPL */
           PRINTF("csma: rexmit failed %d: %d\n", n->transmissions, status);
         }
         free_packet(n, q);
@@ -362,6 +360,11 @@ send_packet(mac_callback_t sent, void *ptr)
     }
 #else /* WITH_ORPL */
     const rimeaddr_t *addr = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
+
+    if(rimeaddr_cmp(addr,
+            &rimeaddr_null)) {
+        ORPL_LOG("Csma: send broadcast (%u bytes)\n", packetbuf_datalen());
+    }
 
     if(seqno == 0) {
       /* PACKETBUF_ATTR_MAC_SEQNO cannot be zero, due to a pecuilarity
@@ -435,14 +438,10 @@ send_packet(mac_callback_t sent, void *ptr)
       memb_free(&neighbor_memb, n);
     }
     PRINTF("csma: could not allocate packet, dropping packet\n");
-#if WITH_ORPL
     ORPL_LOG_FROM_PACKETBUF("Csma:! couldn't allocate packet");
-#endif /* WITH_ORPL */
   } else {
     PRINTF("csma: could not allocate neighbor, dropping packet\n");
-#if WITH_ORPL
     ORPL_LOG_FROM_PACKETBUF("Csma:! couldn't allocate neighbor");
-#endif /* WITH_ORPL */
   }
   mac_call_sent_callback(sent, ptr, MAC_TX_ERR, 1);
 }

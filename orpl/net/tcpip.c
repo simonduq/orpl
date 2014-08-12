@@ -597,14 +597,16 @@ tcpip_ipv6_output(void)
 	    /* This should be copied from the ext header... */
 	    UIP_IP_BUF->proto = proto;
 	  }
+	  ORPL_LOG_FROM_UIP("Tcpip: fw to fallback interface");
 	  UIP_FALLBACK_INTERFACE.output();
 #else
+	  ORPL_LOG_FROM_UIP("Tcpip: no route, dropping");
           PRINTF("tcpip_ipv6_output: Destination off-link but no route\n");
 #endif /* !UIP_FALLBACK_INTERFACE */
           uip_len = 0;
           return;
         }
-
+      ORPL_LOG_FROM_UIP("Tcpip: fw to %d (default)", ORPL_LOG_NODEID_FROM_IPADDR(nexthop));
       } else {
         /* A route was found, so we look up the nexthop neighbor for
            the route. */
@@ -631,8 +633,10 @@ tcpip_ipv6_output(void)
 
           /* We don't have a nexthop to send the packet to, so we drop
              it. */
+          ORPL_LOG_FROM_UIP("Tcpip: next hop is dead");
           return;
         }
+        ORPL_LOG_FROM_UIP("Tcpip: fw to %d", ORPL_LOG_NODEID_FROM_IPADDR(nexthop));
       }
 #else /* !WITH_ORPL */
       /* Set ORPL sequence number */
@@ -654,13 +658,13 @@ tcpip_ipv6_output(void)
 
       /* Set anycast MAC address instead of routing */
       if(orpl_is_reachable_neighbor(&UIP_IP_BUF->destipaddr)) {
-        ORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
+        OORPL_LOG_FROM_UIP("Tcpip: fw to nbr");
         anycast_addr = &anycast_addr_nbr;
       } else if(orpl_routing_set_contains(&UIP_IP_BUF->destipaddr) && !orpl_blacklist_contains(seqno)) {
-        ORPL_LOG_FROM_UIP("Tcpip: fw down");
+        OORPL_LOG_FROM_UIP("Tcpip: fw down");
         anycast_addr = &anycast_addr_down;
       } else if(orpl_is_root() == 0){
-        ORPL_LOG_FROM_UIP("Tcpip: fw up");
+        OORPL_LOG_FROM_UIP("Tcpip: fw up");
         anycast_addr = &anycast_addr_up;
       } else { /* We are the root and need to route upwards =>
       use fallback interface. */

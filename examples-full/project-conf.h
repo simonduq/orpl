@@ -34,7 +34,7 @@
 #ifndef __PROJECT_CONF_H__
 #define __PROJECT_CONF_H__
 
-#define WITH_ORPL 0
+#define WITH_ORPL 1
 
 /* The IEEE 802.15.4 channel in use */
 #undef RF_CHANNEL

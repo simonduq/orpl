@@ -198,18 +198,6 @@ void orpl_set_curr_seqno(uint32_t seqno)
   current_seqno = seqno;
 }
 
-/* Build a global link-layer address from an IPv6 based on its UUID64 */
-void
-lladdr_from_ipaddr_uuid(uip_lladdr_t *lladdr, const uip_ipaddr_t *ipaddr)
-{
-#if (UIP_LLADDR_LEN == 8)
-  memcpy(lladdr, ipaddr->u8 + 8, UIP_LLADDR_LEN);
-  lladdr->addr[0] ^= 0x02;
-#else
-#error orpl.c supports only EUI-64 identifiers
-#endif
-}
-
 /* Build a global IPv6 address from a link-local IPv6 address */
 static void
 global_ipaddr_from_llipaddr(uip_ipaddr_t *gipaddr, const uip_ipaddr_t *llipaddr)
