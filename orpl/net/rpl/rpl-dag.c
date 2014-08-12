@@ -714,7 +714,7 @@ We just update the rank and return the DAG. */
       rpl_schedule_dao(instance);
     }
     ORPL_LOG("RPL: parent switch %u -> %u, rank %u -> %u\n",
-            last_parent ? ORPL_LOG_IPADDR(rpl_get_parent_ipaddr(last_parent)) : 0, ORPL_LOG_IPADDR(rpl_get_parent_ipaddr(best_dag->preferred_parent)), old_rank, best_dag->rank);
+            last_parent ? ORPL_LOG_NODEID_FROM_IPADDR(rpl_get_parent_ipaddr(last_parent)) : 0, ORPL_LOG_NODEID_FROM_IPADDR(rpl_get_parent_ipaddr(best_dag->preferred_parent)), old_rank, best_dag->rank);
 
     rpl_reset_dio_timer(instance);
   } else if(best_dag->rank != old_rank) {
