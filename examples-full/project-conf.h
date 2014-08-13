@@ -63,7 +63,7 @@ typedef uint32_t rtimer_clock_t;
 #define UIP_CONF_TCP             0
 #undef SICSLOWPAN_CONF_FRAG
 #define SICSLOWPAN_CONF_FRAG     0
-#undef SICSLOWPAN_CONF_FRAG
+#undef UIP_CONF_DS6_ADDR_NBU
 #define UIP_CONF_DS6_ADDR_NBU    1
 #undef UIP_CONF_BUFFER_SIZE
 #define UIP_CONF_BUFFER_SIZE   160
