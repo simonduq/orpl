@@ -63,7 +63,16 @@ appdata_copy(struct app_data *dst, struct app_data *src)
 struct app_data *
 appdataptr_from_uip()
 {
-  return (struct app_data *)((char*)uip_buf + ((uip_len - sizeof(struct app_data))));
+  struct app_data *ptr;
+  struct app_data data;
+  if(uip_len < sizeof(struct app_data)) return NULL;
+  ptr = (struct app_data *)((char*)uip_buf + ((uip_len - sizeof(struct app_data))));
+  appdata_copy(&data, ptr);
+  if(data.magic == ORPL_LOG_MAGIC) {
+    return ptr;
+  } else {
+    return NULL;
+  }
 }
 
 /* Get dataptr from the current packetbuf */
@@ -71,9 +80,11 @@ struct app_data *
 appdataptr_from_packetbuf()
 {
   struct app_data *ptr;
+  struct app_data data;
   if(packetbuf_datalen() < sizeof(struct app_data)) return NULL;
   ptr = (struct app_data *)((char*)packetbuf_dataptr() + ((packetbuf_datalen() - sizeof(struct app_data))));
-  if(ptr->magic == ORPL_LOG_MAGIC) {
+  appdata_copy(&data, ptr);
+  if(data.magic == ORPL_LOG_MAGIC) {
     return ptr;
   } else {
     return NULL;
