@@ -96,6 +96,9 @@ typedef uint32_t rtimer_clock_t;
 /* Run without IPv6 NA/ND */
 #undef UIP_CONF_ND6_SEND_NA
 #define UIP_CONF_ND6_SEND_NA 0
+/* Disable DIS sending */
+#undef RPL_DIS_SEND_CONF
+#define RPL_DIS_SEND_CONF 0
 #endif /* WITH_ORPL */
 
 #endif /* __PROJECT_CONF_H__ */

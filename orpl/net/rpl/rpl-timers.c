@@ -76,7 +76,7 @@ We just update EDC periodically */
   rpl_recalculate_ranks();
 
   /* handle DIS */
-#ifdef RPL_DIS_SEND
+#if RPL_DIS_SEND
   next_dis++;
   if(rpl_get_any_dag() == NULL && next_dis >= RPL_DIS_INTERVAL) {
     next_dis = 0;
