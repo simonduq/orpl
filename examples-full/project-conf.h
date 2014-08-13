@@ -93,6 +93,9 @@ typedef uint32_t rtimer_clock_t;
 /* RPL without downward routes. Modify if you need more than upward-only. */
 #undef RPL_CONF_MOP
 #define RPL_CONF_MOP RPL_MOP_NO_DOWNWARD_ROUTES
+/* Run without IPv6 NA/ND */
+#undef UIP_CONF_ND6_SEND_NA
+#define UIP_CONF_ND6_SEND_NA 0
 #endif /* WITH_ORPL */
 
 #endif /* __PROJECT_CONF_H__ */
