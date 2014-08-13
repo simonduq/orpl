@@ -1030,8 +1030,7 @@ input_packet(void)
       compower_clear(&current_packet);
 #endif /* CONTIKIMAC_CONF_COMPOWER */
 
-      if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
-          &rimeaddr_node_addr)) { /* if unicast */
+      if(appdataptr_from_packetbuf() != NULL) { /* If application packet */
 
         ORPL_LOG_INC_HOPCOUNT_FROM_PACKETBUF();
                 ORPL_LOG_FROM_PACKETBUF("Cmac: input from %d",
