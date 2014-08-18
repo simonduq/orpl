@@ -78,6 +78,7 @@ void orpl_log_start();
 #define ORPL_LOG_LLADDR(addr) uip_debug_lladdr_print(addr)
 #define ORPL_LOG_INC_HOPCOUNT_FROM_PACKETBUF() { struct app_data *ptr = appdataptr_from_packetbuf(); if(ptr) ptr->hop++; }
 #define ORPL_LOG_INC_FPCOUNT_FROM_PACKETBUF() { struct app_data *ptr = appdataptr_from_packetbuf(); if(ptr) ptr->fpcount++; }
+#define ORPL_LOG_PRINT_NEIGHBOR_LIST() orpl_log_print_neighbor_list()
 
 #define ORPL_LOG_NODEID_FROM_RIMEADDR log_node_id_from_rimeaddr
 #define ORPL_LOG_NODEID_FROM_IPADDR log_node_id_from_ipaddr

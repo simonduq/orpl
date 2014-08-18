@@ -150,6 +150,17 @@ rpl_print_neighbor_list() {
   printf("RPL: end of neighbor list\n");
 }
 
+/* Print all neighbors, their rank and other relevant information */
+void
+orpl_log_print_neighbor_list()
+{
+#if WITH_ORPL
+  orpl_calculate_edc(1);
+#else
+  rpl_print_neighbor_list();
+#endif
+}
+
 /* Prints out the content of the active routing set */
 void
 orpl_log_print_routing_set()
@@ -216,18 +227,13 @@ PROCESS_THREAD(orpl_log_process, ev, data)
     etimer_reset(&periodic);
     simple_energest_step();
 
-#if WITH_ORPL
-    /* Periodic debugging of ORPL EDC calculation */
-    orpl_calculate_edc(1);
+    /* Periodic debugging of neighbors and ranks */
+    ORPL_LOG_PRINT_NEIGHBOR_LIST();
 
+#if WITH_ORPL
     /* Periodic debugging of ORPL routing sets */
-    if(cnt++ % 8 == 0) {
+    if(orpl_are_routing_set_active() && ++cnt % 8 == 0) {
       orpl_log_print_routing_set();
-    }
-#else
-    /* Periodic debugging of RPL neighbors */
-    if(cnt++ % 8 == 0) {
-      rpl_print_neighbor_list();
     }
 #endif /* WITH_ORPL */
 
