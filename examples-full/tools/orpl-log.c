@@ -102,7 +102,7 @@ log_appdataptr(struct app_data *dataptr)
   if(dataptr) {
     appdata_copy(&data, dataptr);
 
-    printf(" [%lx %u_%u %u->%u]",
+    ORPL_LOG(" [%lx %u_%u %u->%u]",
         data.seqno,
         data.hop,
         data.fpcount,
@@ -111,7 +111,7 @@ log_appdataptr(struct app_data *dataptr)
         );
   }
 
-  printf(" {%u/%u %u %u} \n",
+  ORPL_LOG(" {%u/%u %u %u} \n",
 #if WITH_ORPL
         forwarder_set_size,
 #else
@@ -141,13 +141,13 @@ log_node_id_from_ipaddr(const void *ipaddr)
 static void
 rpl_print_neighbor_list() {
   rpl_parent_t *p = nbr_table_head(rpl_parents);
-  printf("RPL: neighbor list\n");
+  ORPL_LOG("RPL: neighbor list\n");
   while(p != NULL) {
-    printf("RPL: nbr %d %u + %u = %u %c\n",
+    ORPL_LOG("RPL: nbr %d %u + %u = %u %c\n",
         node_id_from_rimeaddr(nbr_table_get_lladdr(rpl_parents, p)), p->rank, p->link_metric, p->rank + p->link_metric, p==default_instance->current_dag->preferred_parent?'*':' ');
     p = nbr_table_next(rpl_parents, p);
   }
-  printf("RPL: end of neighbor list\n");
+  ORPL_LOG("RPL: end of neighbor list\n");
 }
 
 /* Print all neighbors, their rank and other relevant information */
@@ -165,26 +165,26 @@ orpl_log_print_neighbor_list()
 void
 orpl_log_print_routing_set()
 {
-  printf("Routing set dump: bits set %d/%d\n", orpl_routing_set_count_bits(), ROUTING_SET_M);
-  printf("Routing set dump: start\n");
+  ORPL_LOG("Routing set dump: bits set %d/%d\n", orpl_routing_set_count_bits(), ROUTING_SET_M);
+  ORPL_LOG("Routing set dump: start\n");
   int i;
   for(i=0; i<ROUTING_SET_M/8; i++) {
     if(i%16 == 0) {
-      printf("Routing set dump: [%2u] ", i/16);
+      ORPL_LOG("Routing set dump: [%2u] ", i/16);
     }
-    printf("%02x ", orpl_routing_set_get_active()->u8[i]);
+    ORPL_LOG("%02x ", orpl_routing_set_get_active()->u8[i]);
     if(i%16 == 15) {
-      printf("\n");
+      ORPL_LOG("\n");
     }
   }
-  printf("\nRouting set dump: end\n");
+  ORPL_LOG("\nRouting set dump: end\n");
 
   int count = 0;
   int print_header = 1;
-  printf("Routing set list: start\n");
+  ORPL_LOG("Routing set list: start\n");
   for(i=0; i<get_n_nodes(); i++) {
     if(print_header) {
-      printf("Routing set list: [%2u]", count/8);
+      ORPL_LOG("Routing set list: [%2u]", count/8);
       print_header = 0;
     }
     uip_ipaddr_t dest_ipaddr;
@@ -193,14 +193,14 @@ orpl_log_print_routing_set()
     int contained = orpl_routing_set_contains(&dest_ipaddr);
     if(contained) {
       count+=1;
-      printf("%3u, ", id);
+      ORPL_LOG("%3u, ", id);
       if(count%8 == 0) {
-        printf("\n");
+        ORPL_LOG("\n");
         print_header = 1;
       }
     }
   }
-  printf("\nRouting set list: end (%u nodes)\n",count);
+  ORPL_LOG("\nRouting set list: end (%u nodes)\n",count);
 }
 
 PROCESS(orpl_log_process, "ORPL Log");
